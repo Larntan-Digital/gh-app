@@ -1,0 +1,300 @@
+(
+ (:prepaid-only)
+ (:has-unpaid-loan)
+ (:has-loan-on-queue)
+ (:not-qualified)
+ (:max-bmc-limit)
+ (:trigger-rec)
+
+ (:menu
+	 ("1" nil :bmc-info)
+	 ("2" nil :borrow-now)
+	 ("3" nil :borrow-data)
+	 ;("4" nil :menu-others)
+	 (:any nil :menu-again)
+	 )
+
+ (:menu-again
+	 ("1" nil :bmc-info)
+	 ("2" nil :borrow-now)
+	 ("3" nil :borrow-data)
+	 ;("4" nil :menu-others)
+	 (:any nil :menu-again)
+	 )
+
+
+ (:menu-others
+	 ;;;CHUNK-START:c1
+	 ("1"	nil		:borrow-now)
+	 ("2" nil       :borrow-data)
+	 ("#"	nil   :quit)
+	 (:any nil  :menu)
+	 ;;;CHUNK-END:c1
+	 )
+
+ (:borrow-now
+	 ("1"   (can-lend? 500) (if (check-menu?) :menu-3p-number :lend-airtime)  :borrow-now (session+ :amount-requested 500 :serviceq (fee :airtime 500) :amount-net (net :airtime 500 :pre) :loan-type :airtime :advance-name "GHc0.5"))
+	 ("2"   (can-lend? 1000) (if (check-menu?) :menu-3p-number :lend-airtime)  :borrow-now (session+ :amount-requested 1000 :serviceq (fee :airtime 1000) :amount-net (net :airtime 1000 :pre) :loan-type :airtime :advance-name "GHc1"))
+	 ("3"   (can-lend? 2000) (if (check-menu?) :menu-3p-number :lend-airtime)  :borrow-now (session+ :amount-requested 2000 :serviceq (fee :airtime 2000) :amount-net (net :airtime 2000 :pre) :loan-type :airtime :advance-name "GHc2"))
+	 ("4"   (can-lend? 5000) (if (check-menu?) :menu-3p-number :lend-airtime)  :borrow-now (session+ :amount-requested 5000 :serviceq (fee :airtime 5000) :amount-net (net :airtime 5000 :pre) :loan-type :airtime :advance-name "GHc5"))
+	 ("5"  nil              :borrow-help)
+	 ("6"  nil              :borrow-balance)
+	 ("0"  nil               :menu)
+	 (:any nil               :borrow-now-again))
+
+ (:borrow-now-again
+	 ("1"   (can-lend? 500) (if (check-menu?) :menu-3p-number :lend-airtime)  :borrow-now-again (session+ :amount-requested 500 :serviceq (fee :airtime 500) :amount-net (net :airtime 500 :pre) :loan-type :airtime :advance-name "GHc0.5"))
+     ("2"   (can-lend? 1000) (if (check-menu?) :menu-3p-number :lend-airtime)  :borrow-now-again (session+ :amount-requested 1000 :serviceq (fee :airtime 1000) :amount-net (net :airtime 1000 :pre) :loan-type :airtime :advance-name "GHc1"))
+	 ("3"   (can-lend? 2000) (if (check-menu?) :menu-3p-number :lend-airtime)  :borrow-now-again (session+ :amount-requested 2000 :serviceq (fee :airtime 2000) :amount-net (net :airtime 2000 :pre) :loan-type :airtime :advance-name "GHc2"))
+	 ("4"   (can-lend? 5000) (if (check-menu?) :menu-3p-number :lend-airtime)  :borrow-now-again (session+ :amount-requested 5000 :serviceq (fee :airtime 5000) :amount-net (net :airtime 5000 :pre) :loan-type :airtime :advance-name "GHc5"))
+	 ("6"  nil              :borrow-help)
+	 ("7"  nil              :borrow-balance)
+     ("0"  nil               :menu)
+	 (:any nil               :borrow-now-again))
+
+
+ (:borrow-data
+	 ("1"   (can-lend? 500) (if (check-menu?) :menu-3p-number :lend-data) :borrow-data-again (session+ :amount-requested 500 :serviceq (fee :data 500) :amount-net (net :data 500 :post) :bundle-size 43 :loan-type :data :advance-name "35MB"))
+	 ("2"   (can-lend? 1000) (if (check-menu?) :menu-3p-number :lend-data)  :borrow-data-again (session+ :amount-requested 1000 :serviceq (fee :data 1000) :amount-net (net :data 1000 :post) :bundle-size 850 :loan-type :data :advance-name "1.6GB"))
+	 ("3"   (can-lend? 2000) (if (check-menu?) :menu-3p-number :lend-data)  :borrow-data-again (session+ :amount-requested 2000 :serviceq (fee :data 2000) :amount-net (net :data 2000 :post) :bundle-size 170 :loan-type :data :advance-name "200MB"))
+	 ("4"   (can-lend? 5000) (if (check-menu?) :menu-3p-number :lend-data)  :borrow-data-again (session+ :amount-requested 5000 :serviceq (fee :data 5000) :amount-net (net :data 5000 :post) :bundle-size 425 :loan-type :data :advance-name "650MB"))
+	 ("5"  nil              :borrow-help)
+	 ("6"  nil              :borrow-balance)
+     ("0"  nil               :menu)
+	 (:any nil               :borrow-data-again))
+
+ (:borrow-data-again
+	 ("1"   (can-lend? 500) (if (check-menu?) :menu-3p-number :lend-data)  :borrow-data-again (session+ :amount-requested 500 :serviceq (fee :data 500) :amount-net (net :data 500 :post) :bundle-size 43 :loan-type :data :advance-name "35MB"))
+	 ("2"   (can-lend? 1000) (if (check-menu?) :menu-3p-number :lend-data)  :borrow-data-again (session+ :amount-requested 1000 :serviceq (fee :data 1000) :amount-net (net :data 1000 :post) :bundle-size 85 :loan-type :data :advance-name "95MB"))
+	 ("3"   (can-lend? 2000) (if (check-menu?) :menu-3p-number :lend-data)  :borrow-data-again (session+ :amount-requested 2000 :serviceq (fee :data 2000) :amount-net (net :data 2000 :post) :bundle-size 170 :loan-type :data :advance-name "200MB"))
+	 ("4"   (can-lend? 5000) (if (check-menu?) :menu-3p-number :lend-data)  :borrow-data-again (session+ :amount-requested 5000 :serviceq (fee :data 5000) :amount-net (net :data 5000 :post) :bundle-size 425 :loan-type :data :advance-name "650MB"))
+	 ("5"  nil              :borrow-help)
+	 ("6"  nil              :borrow-balance)
+     ("0"  nil               :menu)
+	 (:any nil               :borrow-data-again))
+
+
+ (:borrow-help
+	 ("0" nil :menu)
+	 (:any nil               :borrow-help-again)
+	 )
+
+ (:bmc-info
+	 (:any nil               :menu))
+
+
+ (:borrow-help-again
+	 ("0" nil :menu)
+	 (:any nil               :borrow-help-again)
+	 )
+
+
+ (:lend-airtime
+	 (:any nil :borrow-now-again))
+
+ (:lend-data
+	 (:any nil :borrow-data-again))
+
+ (:lend-airtime-failed)
+ (:lend-data-failed)
+
+ (:borrow-balance)
+
+ (:menu-3p-number
+	 (:any (if (check-type?) :lend-airtime :lend-data) :lend-airtime)))
+
+(
+ (:menu
+	 ((> queue-count 0) (:en "Dear Customer, your previous request is still being processed. Please be patient. Thank you."))
+	 ((and (= max-qualified 0) (= queue-count 0) (= max-loanable 0) (= queue-total 0))      (:en "Dear customer, to qualify for this service, you should have been on the Glo network for 3months with N200 monthly usage."))
+	 ;((and (= queue-count 0) (> queue-total 1))      (:en ("You have reached your BMC's customers limit and you have an unpaid loan of GHc" :loan-balance ". Please, recharge your account to repay your loan.")))
+	 ((and (> loan-balance 0)(= queue-count 0) (= max-loanable 0) (>= queue-total 0))      (:en ("You have an unpaid balance of GHc" :loan-balance ".")))
+	 ((and (= queue-count 0) (> max-loanable 0) (>= queue-total 0))      (:en ("Dear Customer, Welcome, you are eligible for GHc" :max-loanable ".\nReply with")))
+	 ((and (= queue-count 0) (> max-loanable 0) (>= queue-total 0))      (:en "1. BMC Info"))
+	 ((and (= queue-count 0) (> max-loanable 0) (>= queue-total 0))      (:en "2. Borrow Credit"))
+	 ((and (= queue-count 0) (> max-loanable 0) (>= queue-total 0))      (:en "3. Borrow Data"))
+	 ;((and (= queue-count 0) (> max-loanable 0) (>= queue-total 0))      (:en "4. Borrow for Others"))
+	 )
+
+ (:menu-again
+	 ((> queue-count 0) (:en "Dear Customer, your previous request is still being processed. Please be patient. Thank you."))
+	 ((and (= max-qualified 0) (= queue-count 0) (= max-loanable 0) (= queue-total 0))      (:en "Dear customer, to qualify for this service, you should have been on the Glo network for 3months with N200 monthly usage."))
+	 ;((and (= queue-count 0) (> queue-total 1))      (:en ("You have reached your BMC's customers limit and you have an unpaid loan of GHc" :loan-balance ". Please, recharge your account to repay your loan.")))
+	 ((and (> loan-balance 0)(= queue-count 0) (= max-loanable 0) (>= queue-total 0))      (:en ("You have an unpaid balance of GHc" :loan-balance ".")))
+	 ((and (= queue-count 0) (> max-loanable 0) (>= queue-total 0))      (:en ("Dear Customer, Welcome, you are eligible for GHc" :max-loanable ".\nReply with")))
+	 ((and (= queue-count 0) (> max-loanable 0) (>= queue-total 0))      (:en "1. BMC Info"))
+	 ((and (= queue-count 0) (> max-loanable 0) (>= queue-total 0))      (:en "2. Borrow Credit"))
+	 ((and (= queue-count 0) (> max-loanable 0) (>= queue-total 0))      (:en "3. Borrow Data"))
+	 ;((and (= queue-count 0) (> max-loanable 0) (>= queue-total 0))      (:en "4. Borrow for Others"))
+	 )
+
+
+ (:menu-others
+	 ((> queue-count 0) (:en "Dear Customer, your previous request is still being processed. Please be patient. Thank you."))
+	 ((and (= max-qualified 0) (= queue-count 0) (= max-loanable 0) (= queue-total 0))      (:en "Dear customer, to qualify for this service, you should have been on the Glo network for 3months with N200 monthly usage."))
+	 ;((and (= queue-count 0) (> queue-total 1))      (:en ("You have reached your BMC's customers limit and you have an unpaid loan of GHc" :loan-balance ". Please, recharge your account to repay your loan.")))
+	 ((and (> loan-balance 0)(= queue-count 0) (= max-loanable 0) (>= queue-total 0))      (:en ("You have an unpaid balance of GHc" :loan-balance ".")))
+	 ((and (= queue-count 0) (> max-loanable 0) (>= queue-total 0))      (:en ("Dear Customer, you can borrow for others up to GHc" :max-loanable ", reply with")))
+	 ((and (= queue-count 0) (> max-loanable 0) (>= queue-total 0))      (:en "1. Borrow Credit for others"))
+	 ((and (= queue-count 0) (> max-loanable 0) (>= queue-total 0))      (:en "2. Borrow Data for others")))
+
+
+ (:borrow-now
+	 ((> queue-count 0) (:en "Dear Customer, your previous request is still being processed. Please be patient. Thank you."))
+	 ((and (= max-qualified 0)  (= queue-count 0) (= max-loanable 0) (= queue-total 0))     (:en "Dear customer, to qualify for this service, you should have been on the Glo network for 3months with N200 monthly usage."))
+	 ((and (= queue-count 0) (> queue-total 0) (= max-loanable 0))      (:en ("You have an unpaid balance of GHc" :loan-balance ".Please, recharge your account to repay your loan.")))
+	 ((and (= queue-count 0) (>= queue-total 1) (> max-qualified 0) (> max-loanable 0))      (:en ("You are still eligible for remaining GHc" :max-loanable ".")))
+	 ((and (= queue-count 0) (> max-loanable 0) (= queue-total 0))        (:en ("You are eligible for GHc" :max-loanable ".")))
+	 ((and (= queue-count 0) (> max-loanable 0) (>= queue-total 0))        (:en "Reply with"))
+	 ((and (= queue-count 0) (>= max-loanable 500) (>= queue-total 0))    (:en "1. GHc0.5"))
+	 ((and (= queue-count 0) (>= max-loanable 1000) (>= queue-total 0))      (:en "2. GHc1"))
+	 ((and (= queue-count 0) (>= max-loanable 2000) (>= queue-total 0))      (:en "3. GHc2"))
+	 ((and (= queue-count 0) (>= max-loanable 5000) (>= queue-total 0))      (:en "4. GHc5"))
+	 ((and (= queue-count 0) (> max-loanable 0))      (:en "5. Help"))
+	 ((and (= queue-count 0) (> max-loanable 0))      (:en  "6. Balance"))
+	 (nil                                             (:en  "0. Back")))
+
+ (:borrow-now-again
+	 ((> queue-count 0) (:en "Dear Customer, your previous request is still being processed. Please be patient. Thank you."))
+	 ((and (= max-qualified 0)  (= queue-count 0) (= max-loanable 0) (= queue-total 0))            (:en "Dear customer, to qualify for this service, you should have been on the Glo network for 3months with N200 monthly usage."))
+	 ((and (= queue-count 0) (> queue-total 0) (= max-loanable 0))       (:en ("You have an unpaid balance of GHc" :loan-balance ".Please, recharge your account to repay your loan.")))
+	 ((and (= queue-count 0) (>= queue-total 1) (> max-qualified 0) (> max-loanable 0))      (:en ("You are still eligible for GHc" :max-loanable ".")))
+	 ((and (= queue-count 0) (> max-loanable 0) (= queue-total 0))        (:en ("You are eligible for GHc" :max-loanable ".")))
+	 ((and (= queue-count 0) (> max-loanable 0) (>= queue-total 0))         (:en "Reply with"))
+	 ((and (= queue-count 0) (>= max-loanable 500) (>= queue-total 0))     (:en "1. GHc0.5"))
+	 ((and (= queue-count 0) (>= max-loanable 1000) (>= queue-total 0))       (:en "2. GHc1"))
+	 ((and (= queue-count 0) (>= max-loanable 2000) (>= queue-total 0))       (:en "3. GHc2"))
+	 ((and (= queue-count 0) (>= max-loanable 5000) (>= queue-total 0))       (:en "4. GHc5"))
+	 ((and (= queue-count 0) (> max-loanable 0))      (:en "5. Help"))
+	 ((and (= queue-count 0) (> max-loanable 0))      (:en  "6. Balance"))
+	 (nil                                             (:en  "0. Back")))
+
+
+ (:borrow-data
+	 ((and (> max-qualified 0)  (> queue-count 0)) (:en "Dear Customer, your previous request is still being processed. Please be patient. Thank you."))
+	 ((and (= max-qualified 0)  (= queue-count 0) (= max-loanable 0) (= queue-total 0))            (:en "Dear customer, to qualify for this service, you should have been on the Glo network for 3months with N200 monthly usage."))
+	 ((and (= queue-count 0) (> queue-total 0) (= max-loanable 0))       (:en ("You have an unpaid balance of GHc" :loan-balance ".Please, recharge your account to repay your loan.")))
+
+	 ;((and (= queue-count 0) (> max-loanable 0) (>= queue-total 0))         (:en "3G Data Plans plus night benefit\GHc"))
+	 ((and (= queue-count 0) (>= queue-total 1) (> max-qualified 0) (> max-loanable 0))      (:en ("You are still eligible for GHc" :max-loanable " worth of data")))
+	 ((and (= queue-count 0) (> max-loanable 0) (= queue-total 0))        (:en ("You are eligible for GHc" :max-loanable " worth of data.")))
+	 ((and (= queue-count 0) (> max-loanable 0) (>= queue-total 0))          (:en "Reply with"))
+	 ((and (= queue-count 0) (>= max-loanable 500) (>= queue-total 0))       (:en "1. GHc0.5=35MB+5MB"))
+	 ((and (= queue-count 0) (>= max-loanable 1000) (>= queue-total 0))      (:en "2. GHc1=95MB+35MB"))
+	 ((and (= queue-count 0) (>= max-loanable 2000) (>= queue-total 0))      (:en "3. GHc2=200MB+110MB"))
+	 ((and (= queue-count 0) (>= max-loanable 5000) (>= queue-total 0))      (:en "4. GHc5=650MB+550MB"))
+	 ((and (= queue-count 0) (> max-loanable 0))                             (:en "5. Help"))
+     ((and (= queue-count 0) (> max-loanable 0))                             (:en  "6. Balance"))
+     (nil                                                                    (:en  "0. Back"))
+	 )
+
+ (:borrow-data-again
+	 ((and (> max-qualified 0)  (> queue-count 0)) (:en "Dear Customer, your previous request is still being processed. Please be patient. Thank you."))
+	 ((and (= max-qualified 0)  (= queue-count 0) (= max-loanable 0) (= queue-total 0))    (:en "Dear customer, to qualify for this service, you should have been on the Glo network for 3months with N200 monthly usage."))
+	 ((and (= queue-count 0) (> queue-total 0) (= max-loanable 0))       (:en ("You have an unpaid balance of GHc" :loan-balance ".Please, recharge your account to repay your loan.")))
+
+	 ;((and (= queue-count 0) (> max-loanable 0) (>= queue-total 0))         (:en "3G Data Plans plus night benefit\GHc"))
+	 ((and (= queue-count 0) (>= queue-total 1) (> max-qualified 0) (> max-loanable 0))      (:en ("You are still eligible for GHc" :max-loanable " worth of data")))
+	 ((and (= queue-count 0) (> max-loanable 0) (= queue-total 0))        (:en ("You are eligible for GHc" :max-loanable " worth of data")))
+	 ((and (= queue-count 0) (> max-loanable 0) (>= queue-total 0))         (:en "Reply with"))
+	 ((and (= queue-count 0) (>= max-loanable 500) (>= queue-total 0))       (:en "1. GHc0.5=35MB+5MB"))
+	 ((and (= queue-count 0) (>= max-loanable 1000) (>= queue-total 0))      (:en "2. GHc1=95MB+35MB"))
+	 ((and (= queue-count 0) (>= max-loanable 2000) (>= queue-total 0))      (:en "3. GHc2=200MB+110MB"))
+	 ((and (= queue-count 0) (>= max-loanable 5000) (>= queue-total 0))      (:en "4. GHc5=650MB+550MB"))
+	 ((and (= queue-count 0) (> max-loanable 0))                             (:en "5. Help"))
+     ((and (= queue-count 0) (> max-loanable 0))                             (:en "6. Balance"))
+     (nil                                                                    (:en "0. Back"))
+	 )
+
+
+ (:borrow-help
+	 (nil (:en "To qualify for this service, you must have used your Glo line for 3 months and used N200 monthly."))
+	 (nil (:en "0. Back")))
+
+ (:borrow-help-again
+	 (nil (:en "Your request was not understood."))
+	 (nil (:en "To qualify for this service, you must have used your Glo line for 3 months and used N200 monthly."))
+	 (nil (:en "0. Back")))
+
+
+ (:lend-airtime
+	 ((and (> outstanding 0)) (:en ("You have received GHc":amount-net " in your Borrow Me Credit Account. A service fee of GHc" :serviceq " has been charged. You are still eligible for remaining GHc" :outstanding ". Press 1 to borrow more")))
+	 ((and (= outstanding 0) (< amount-requested 5000)) (:en ("You have received GHc":amount-net " in your Borrow Me Credit Account. A service fee of GHc" :serviceq " has been charged.")))
+	 ((and (= outstanding 0) (>= amount-requested 5000)) (:en ("You have received GHc":amount-net " in your Borrow Me Credit Account. A service fee of GHc" :serviceq " has been charged. To subscribe to Glo VAS services")))
+	)
+ (:lend-airtime-failed
+	 (nil (:en "Your request for airtime advance was not successful. Please try again.")))
+ (:lend-data
+	 ((and (> outstanding 0))  (:en ("You have received ":advance-name " in your Borrow Me Data Account. You are still eligible for remaining GHc" :outstanding ". Press 1 to borrow more")))
+	 ((and (= outstanding 0) (< amount-requested 5000))  (:en ("You have received ":advance-name " in your Borrow Me Data Account.")))
+	 ((and (= outstanding 0) (>= amount-requested 5000))  (:en ("You have received ":advance-name " in your Borrow Me Data Account. To subscribe to Glo VAS services.")))
+	 )
+
+ (:lend-data-failed
+	 (nil (:en "Your request for airtime data advance was not successful. Please try again.")))
+
+ (:menu-3p-number
+	 (nil (:en "Reply with the phone number of the recipient")))
+
+
+ (:borrow-balance
+	 ((= loan-balance 0) (:en "You have no advance airtime uncleared balance."))
+	 ((> loan-balance 0) (:en ("You have an unpaid balance of GHc" :loan-balance ". Your eligible credit balance is GHc" :max-loanable "."))))
+ (:borrow-balance-again
+	 ((= loan-balance 0) (:en "You have no advance airtime uncleared balance."))
+	 ((> loan-balance 0) (:en ("You have an unpaid balance of GHc" :loan-balance ". Your eligible credit balance is GHc" :max-loanable "."))))
+
+
+
+ (:trigger-rec
+	 ((> loan-balance 0) (:en "Dear customer, your repayment request is being processed."))
+	 ((= loan-balance 0) (:en "Dear customer, you do not have any loan at the moment. Dial *321#"))
+	 )
+
+ (:not-qualified
+	 (nil  (:en "Dear customer, to qualify for this service, you should have been on the Glo network for 3months with N200 monthly usage.")))
+
+ (:prepaid-only
+	 (nil (:en "Dear Customer, the Borrow Me service is only available to pre-paid customers only. Thank you.")))
+
+ (:bmc-info
+	 (nil (:en "Never be out of airtime or data. BMC allows you access even when you are out of cash. Dial any number to go back to menu"))
+	 (nil (:en "0. Back")))
+
+ (:has-loan-on-queue
+	 (nil (:en "Dear Customer, your previous request is still being processed. Please be patient. Thank you.")))
+
+ (:has-unpaid-loan
+	 ((and (= max-loanable 0) (> loan-balance 0)) (:en ("Dear Customer, you have an unpaid balance of GHc" :loan-balance ". Dial *321*9*9# to repay"))))
+
+ (:max-bmc-limit
+	 (nil (:en ("You have reached your BMC's customers limit and you have an unpaid loan of GHc" :loan-balance ". Please, recharge your account to repay your loan or dial *321*9*9#"))))
+
+ (:quit
+	 (nil (:en "Thank you for using Borrow Me Credit service.")))
+ )
+
+
+(
+ ((and (= ussd-string "*321*9*9#")  (= queue-count 0) (> loan-balance 0)) 		() :trigger-rec)
+ ((and (= max-qualified 0) (= queue-count 0) (= max-loanable 0) (= queue-total 0)) 	() :not-qualified)
+ ;((and (= queue-count 0) (> queue-total 1)) 					 	() :max-bmc-limit)
+ ((and (> max-qualified 0) (> queue-count 0)) 						() :has-loan-on-queue)
+ ((and (> loan-balance 0)(= queue-count 0) (= max-loanable 0) (>= queue-total 0))    	() :has-unpaid-loan)
+ ;((and (= queue-count 0) ( = user-state :prepaid))					() :prepaid-only)
+
+ ((and (= ussd-string "*321*1#") (= queue-count 0) (>= max-loanable 500) (>= queue-total 0)) () :borrow-now)
+ ((and (= ussd-string "*321*2#") (= queue-count 0) (>= max-loanable 500) (>= queue-total 0)) () :borrow-data)
+ 
+ ((and (= ussd-string "*321*1*0#") (= queue-count 0) (>= max-loanable 500) (>= queue-total 0)) ((session+ :amount-requested 500 :serviceq (fee :airtime 500) :amount-net (net :airtime 500 :pre) :loan-type :airtime :advance-name "GHc0.5")) :lend-airtime)
+
+ ((and (= ussd-string "*321*1*1#") (= queue-count 0) (>= max-loanable 1000) (>= queue-total 0)) ((session+ :amount-requested 1000 :serviceq (fee :airtime 1000) :amount-net (net :airtime 1000 :pre) :loan-type :airtime :advance-name "GHc1")) :lend-airtime)
+ ((and (= ussd-string "*321*1*2#") (= queue-count 0)(>= max-loanable 2000) (>= queue-total 0)) ((session+ :amount-requested 2000 :serviceq (fee :airtime 2000) :amount-net (net :airtime 2000 :pre) :loan-type :airtime :advance-name "GHc2")) :lend-airtime)
+ ((and (= ussd-string "*321*1*5#") (= queue-count 0) (>= max-loanable 5000) (>= queue-total 0)) ((session+ :amount-requested 5000 :serviceq (fee :airtime 5000) :amount-net (net :airtime 5000 :pre) :loan-type :airtime :advance-name "GHc5")) :lend-airtime)
+
+ ((and (= ussd-string "*321*2*0#") (= queue-count 0) (>= max-loanable 500) (>= queue-total 0)) ((session+ :amount-requested 500 :serviceq (fee :data 500) :amount-net (net :data 500 :post) :bundle-size 43 :loan-type :data :advance-name "35MB")) :lend-data)
+ ((and (= ussd-string "*321*2*1#")(= queue-count 0) (>= max-loanable 1000) (>= queue-total 0)) ((session+ :amount-requested 1000 :serviceq (fee :data 1000) :amount-net (net :data 1000 :post) :bundle-size 85 :loan-type :data :advance-name "95MB")) :lend-data)
+ ((and (= ussd-string "*321*2*2#") (= queue-count 0)(>= max-loanable 2000) (>= queue-total 0)) ((session+ :amount-requested 2000 :serviceq (fee :data 2000) :amount-net (net :data 2000 :post) :bundle-size 170 :loan-type :data :advance-name "200MB")) :lend-data)
+ ((and (= ussd-string "*321*2*5#")(= queue-count 0) (>= max-loanable 5000) (>= queue-total 0)) ((session+ :amount-requested 5000 :serviceq (fee :data 5000) :amount-net (net :data 5000 :post) :bundle-size 425 :loan-type :data :advance-name "650MB")) :lend-data)
+(true () :menu)
+ )

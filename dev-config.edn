@@ -1,0 +1,89 @@
+
+{
+ ; set your dev database connection URL here
+ :secrets #include "/Users/yimika/Documents/IdeaProjects/ghas-acs/secrets.edn"
+ :database-url #join ["postgresql://127.0.0.1:9920/ghacs_db?user=yimika&password="
+											#ref [:secrets :super-admin-password]]
+ :database-pool {:connection-timeout 5000 :max-lifetime 180000
+								 :maximum-pool-size 20
+								 :minimum-idle       10}
+
+ :as {:ussd {:ussd-session-cleanup-interval 	60
+						 :ussd-session-max-age						120                       ;;seconds
+						 :ussd-menu-def						"/Users/yimika/Documents/IdeaProjects/ghas-acs/ussd.def"}
+			:msg {:msg-as-unreconciled-state 			"Dear Customer, your Borrow Me Credit request is still pending. Please be patient.\n"
+						:msg-qualification-failure			"Dear Customer, you cannot get Borrow Me Credit at this time. Please keep your Glo line active and you will be notified when you qualify.\n"
+						:msg-postpaid										"Dear Customer, the Borrow Me Credit service is only accessible to prepaid Customers."
+						:as-error-msg							"Dear Customer, your request stopped unexpectedly at this time. Please try again later"
+						:as-duplicate-error-msg 	"Dear Customer, duplicate session identifier is found in your request. Please try again later"
+
+						:sms-airtime-lend-ok			(condp = ghas-acs.rmqutils/value
+																				5000 "Dear Customer, you have been credited with GHc%s airtime at N%s service charge. Please recharge by %s to repay your advance."
+																				10000 "Dear Customer, you have been credited with GHc%s airtime at N%s service charge. Please recharge by %s to repay your advance."
+																				20000 "Dear Customer, you have been credited with GHc%s airtime at N%s service charge. Please recharge by %s to repay your advance."
+																				50000 "You have been credited N%s airtime at GHc%s service charge. Please recharge by %s to repay your advance. Dial to subscribe Glo VAS entertainment services"
+																				100000 "You have been credited N%s airtime at GHc%s service charge. Please recharge by %s to repay your advance. Dial to subscribe Glo VAS entertainment services"
+																				200000 "You have been credited N%s airtime at GHc%s service charge. Please recharge by %s to repay your advance. Dial to subscribe Glo VAS entertainment services"
+																				"Dear Customer, you have been credited with GHc%s airtime at N%s service charge. Please recharge by %s to repay your advance.")
+
+						:sms-airtime-lend-failed	"Dear Customer, your N%s airtime request was not successful. Please try again."
+						:sms-airtime-lend-unrecon "Dear Customer, your N%s airtime advance request is still being processed. Please be patient."
+
+						:sms-data-lend-ok					(condp = ghas-acs.rmqutils/value
+																				 5000 "Dear Customer, you have received %s data bundle. Please recharge by %s to repay your advance."
+																				 10000 "Dear Customer, you have received %s data bundle. Please recharge by %s to repay your advance."
+																				 20000 "Dear Customer, you have received %s data bundle. Please recharge by %s to repay your advance."
+																				 50000 "Dear Customer, you have received %s data bundle. Please recharge by %s to repay your advance. Dial *577# to subscribe Glo VAS services"
+																				 100000 "Dear Customer, you have received %s data bundle. Please recharge by %s to repay your advance. Dial *577# to subscribe Glo VAS services"
+																				 200000 "Dear Customer, you have received %s data bundle. Please recharge by %s to repay your advance. Dial *577# to subscribe Glo VAS services"
+																				 "Dear Customer, you have received %s data bundle. Please recharge by %s to repay your advance.")
+
+						:sms-data-lend-failed			"Dear Customer, your %s data advance request was not successful."
+						:sms-data-lend-unrecon		"Dear Customer, your %s data advance request is still being processed. Please be patient."
+						:sms-sender-name         "Borrow Me"
+						}
+			}
+ :vtu		"http://127.0.0.1:8990/vtu/lend"
+ :sms-notify	true
+ :send-failed-sms false
+ :queue {:pe {:host        "127.0.0.1"
+							:port       	5672
+							:username   	"guest"
+							:password   	"guest"
+							:vhost      	"/"
+							:queue-exchange      	"xchg-pe-monitoring"
+							:queue-name          	"queue-pe-monitoring"
+							:queue-routing-key   	"pe-monitoring"
+							:monitor-url		"http://127.0.0.1:8920/pe"
+							:monitor-url-timeout	3000
+							:consumers		20
+							}
+				 :recovery {:host      	"127.0.0.1"
+										:port       5672
+										:username   "guest"
+										:password   "guest"
+										:vhost      "/"
+										:queue-exchange      "xchg-trigger-recovery"
+										:queue-name          "queue-trigger-recovery"
+										:queue-routing-key   "trigger-recovery"
+										}
+				 :sms {:host       "127.0.0.1"
+							 :port       5672
+							 :username   "guest"
+							 :password   "guest"
+							 :vhost      "/"
+							 :queue-name					"queue-sms"
+							 :queue-exchange			"xchg-as-sms"
+							 :queue-routing-key		"sms"
+
+							 }
+				 }
+ :pg {:pg-account-url											"http://127.0.0.1/rpc-test/paygw.php"
+			:pg-credentials											"00520120607165829AG-mmt10mmt10"
+			:pg-data-bundles										"4300=BMD-43,8500=BMD-85,17000=BMD-170,42500=BMD-425,85000=BMD-850,170000=BMD-1700"
+			:pg-timeout-credit									15000
+			:pg-credit-request-xml							"/Users/yimika/Documents/IdeaProjects/glo_as/testconfig/pg-topup-request.xml"
+			:msg-lending-from-paymentgateway		"Your account has been topped up via Borrow Me Credit."
+			:recon-lending-interval							60000}
+ }
+

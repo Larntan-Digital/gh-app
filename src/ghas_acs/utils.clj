@@ -3,6 +3,7 @@
 		[clojure.tools.logging :as log]
 		[clojure.walk :as walk]
 		[clojure.string :as str]
+		[ghas-acs.config :refer [env]]
 		[ghas-acs.counters :as counters]
 		[clj-http.client :as http]
 		[clojure.data.json :as json])
@@ -101,7 +102,10 @@
 
 
 (defn cedis [amount]
-	(/ amount 1000))
+	(let [ value (double (/ amount (env :denom-factor)))]
+		(if (= (mod value 10) 0.0)
+			(int value)
+			value)))
 
 
 (defn options->map [options]
@@ -153,9 +157,9 @@
 (defn validate-sub [sub]
 	"validates 'sub'"
 	(let [sub (str sub)]
-		(cond (and (str/starts-with? sub "234") (= (count sub) 13)) (biginteger sub)
-					(and (str/starts-with? sub "0") (= (count sub) 11)) (biginteger (str "234" (subs sub 1)))
-					(= (count sub) 10) (biginteger (str "234" sub))
+		(cond (and (str/starts-with? sub "233") (= (count sub) 12)) (biginteger sub)
+					(and (str/starts-with? sub "0") (= (count sub) 10)) (biginteger (str "233" (subs sub 1)))
+					(= (count sub) 9) (biginteger (str "233" sub))
 					:else (throw (Exception. (format "Value unknown %s"sub))))))
 
 
@@ -166,11 +170,11 @@
 	 (let [msisdn (str sub)
 				 res (fn [val]
 							 (biginteger val))]
-		 (cond (= (count msisdn) 13) (res (subs msisdn 3))
-					 (= (count msisdn) 11) (res (subs msisdn 1))
-					 (= (count msisdn) 10) (res msisdn)
+		 (cond (nil? msisdn) nil
+					 (= (count msisdn) 12) (res (subs msisdn 3))
+					 (= (count msisdn) 9) (res msisdn)
 					 :else (if (= error :default)
-									 (throw (Exception. "cannot parse msisdn"))
+									 (throw (Exception.(format "cannot parse msisdn[%s]" sub)))
 									 sub)))))
 
 

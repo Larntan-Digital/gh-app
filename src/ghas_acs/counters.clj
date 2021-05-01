@@ -22,6 +22,7 @@
 (def ^:dynamic *countof-ext-borrow-error*        (atom 0))
 
 (def ^:dynamic *amountof-successful-loans*				(atom 0))
+(def ^:dynamic *amountof-failed-data-loans*				(atom 0))
 
 
 
@@ -43,7 +44,8 @@
 	(reset! *countof-ext-borrow-requests*     {})
 	(reset! *countof-ext-borrow-error*        0)
 
-	(reset! *amountof-successful-loans*       0))
+	(reset! *amountof-successful-loans*       0)
+	(reset! *amountof-failed-data-loans* 	 0))
 
 
 

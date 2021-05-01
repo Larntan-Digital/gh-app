@@ -46,29 +46,34 @@
 
 (defn handle-ussd-request [request]
 	;localhost:8080/as/ussd/erl?sub=8156545907&sid=12324354646565656565&state=0&msg=*321#
-	(log/infof "USSD Request recieved %s" request)
+	(log/infof "USSD Request recieved %s" (:params request))
 	(utils/increment-counter *countof-ussd-requests* (request :remote-addr))
-	(let [{subscriber     :sub
-				 session-id 		:sid
-				 option					:msg
-				 state					:state} (:params request)]
+	(let [params (:params request)
+				{subscriber     :sub
+				 session-id		:sid
+				 option			:msg
+				 state			:state} params]
 		(if (and subscriber session-id option state)
 			;; Alright, we have all the stuff that we expect. Proceed.
-			(utils/with-func-timed (str "UssdRequest | " subscriber) ""
-														 (let [option (when option (str/replace (URLDecoder/decode option "UTF-8") #"[\n\t ]" ""))
-																	 is-new? (condp = state "0" true "1" false :unknown)]
-															 (if (= is-new? :unknown)
-																 (do
-																	 (utils/increment-counter *countof-aborted-ussd-sessions* is-new?)
-																	 (log/errorf "badSubState(%s,sub=%s,sid=%s,msg=%s)"
-																							 state subscriber session-id option)
+				 (utils/with-func-timed (str "UssdRequest | " subscriber) ""
+					 (try
+						 (let [option (when option (str/replace (URLDecoder/decode option "UTF-8") #"[\n\t ]" ""))
+							   is-new? (condp = state "0" true "1" false :unknown)]
+							 (if (= is-new? :unknown)
+								 (do
+									 (utils/increment-counter *countof-aborted-ussd-sessions* is-new?)
+									 (log/errorf "badSubState(%s,sub=%s,sid=%s,msg=%s)"
+										 state subscriber session-id option)
 
-																	 (make-response "Client error occured" :terminate))
-																 (do
-																	 (log/info "proceed-handle-ussd-request" session-id subscriber is-new? option)
-																	 (proceed-handle-ussd-request session-id (utils/submsisdn subscriber) is-new? option)
-																	 ;(make-response "successful" :terminate)
-																	 ))))
+									 (make-response "Client error occured" :terminate))
+								 (do
+									 ;(log/info "proceed-handle-ussd-request" session-id subscriber is-new? option)
+									 (proceed-handle-ussd-request session-id (utils/submsisdn subscriber) is-new? option)
+									 ;(make-response "successful" :terminate)
+									 )))
+						 (catch Exception e
+							 (log/errorf "!UssdRequest(params=%s|%s)" params (.getMessage e) e)
+							 (make-response "Server error" :terminate))))
 
 			;; USSD gateway has sent an unintelligible request.
 			(do (log/error (format "notProperlyFormedRequest(msisdn=%s,sid=%s,opt=%s)" subscriber session-id option))
@@ -110,75 +115,74 @@
 
 
 
-
-
 (defn do-handler [session-id subscriber is-new? input]
 	(let [parsedInput (utils/parse-ussd-request input)
 				[_ service-code _] parsedInput
 				pre-session-data(if is-new?
-													(let [request-id (let [timestamp (System/currentTimeMillis)
-																								 rand (format "%04d" (rand-int 9999))
-																								 request-id (str timestamp rand)]
-																						 (biginteger request-id))
-																subscriber-info (getSubscriberInfo subscriber)
-																_ (log/infof "subscriber-info[%s]=>%s" subscriber subscriber-info)]
-														(conj {:session-id   session-id :subscriber subscriber
-																	 :service-code service-code :ussd-string input :ma-balance 0 :request-id request-id}
-																	(dissoc subscriber-info :oldest-loan-time)))
-													;subscriber not a new user
-													(let [{:keys [subscriber_no session_data]} (get-session-data session-id)
-																_ (when (nil? session_data)
-																		(throw (Exception. (format "sessionDataNotFound [%s|%s]" subscriber session_data))))
-																_ (log/debugf "sessionState(session-id,%s,input=%s,msisdn=%s) = %s" session-id input subscriber_no (read-string session_data))]
-														(read-string session_data)))
-
+									(let [request-id (let [timestamp (System/currentTimeMillis)
+														   rand (format "%04d" (rand-int 9999))
+														   request-id (str timestamp rand)]
+														 (biginteger request-id))
+										  subscriber-info (getSubscriberInfo subscriber)
+										  _ (log/infof "subscriber-info[%s]=>%s" subscriber subscriber-info)]
+										(conj {:session-id   session-id :subscriber subscriber
+											   :service-code service-code :ussd-string input :ma-balance 0 :request-id request-id}
+											(dissoc subscriber-info :oldest-loan-time)))
+									;subscriber not a new user
+									(let [{:keys [subscriber_no session_data]} (get-session-data session-id)
+										  _ (when (nil? session_data)
+												(throw (Exception. (format "sessionDataNotFound [%s|%s]" subscriber session_data))))
+										  _ (log/debugf "sessionState(session-id,%s,input=%s,msisdn=%s) = %s" session-id input subscriber_no (read-string session_data))]
+										(read-string session_data)))
 				session-data (atom (if is-new?
-														 (let [[start-state session-data] (get-start-state pre-session-data)
-																	 stateSession (assoc session-data :state start-state :menu-3p (when (= start-state :menu-others)
-																																																	true))
-																	 _  (db/updateSession {:session-id session-id :subscriber subscriber :state start-state :session-data (str stateSession)})]
-															 stateSession)
-														 (menu/state-automaton (atom pre-session-data) input)))
+									   (let [[start-state session-data] (get-start-state pre-session-data)
+											 stateSession (assoc session-data :state start-state :menu-3p (when (= start-state :menu-others) true))
+											 _  (db/updateSession {:session-id session-id :subscriber subscriber :state start-state :session-data (str stateSession)})]
+										   stateSession)
+									   (menu/state-automaton (atom pre-session-data) input)))
 				{:keys [service-class state service-code profile-id loan-count loan-balance]} @session-data
 				verify-loan-type (fn [loan-type]
-													 (cond (= loan-type :lend-airtime) :airtime
-																 (= loan-type :lend-data) :data))
+									 (cond (= loan-type :lend-airtime) :airtime
+										 (= loan-type :lend-data) :data))
 				verify-loan-failure (fn [loan-type]
-															(cond (= loan-type :lend-airtime) :lend-airtime-failed
-																		(= loan-type :lend-data) :lend-data-failed))]
+										(cond (= loan-type :lend-airtime) :lend-airtime-failed
+											(= loan-type :lend-data) :lend-data-failed))]
 
 		(log/debugf "Processing session state [menu-state=%s|msisdn=%s|state=%s|%s]" (menu/final-state-p state) subscriber state @session-data)
 		(when (> (:max-qualified @session-data) 0) (utils/increment-counter *countof-qualifiers*  (:max-qualified @session-data)))
 		(condp = state
 			(some #{state} [:borrow-now-again :borrow-data-again]) (let [request-id (let [timestamp (System/currentTimeMillis)
-																																										rand (format "%04d" (rand-int 9999))
-																																										request-id (str timestamp rand)]
-																																								(biginteger request-id))
-																																	 subinfo (getSubscriberInfo subscriber)
-																																	 pre-session (conj {:session-id   session-id :subscriber subscriber
-																																											:service-code service-code :ussd-string input :ma-balance 0 :request-id request-id}
-																																										 (reduce conj {} (dissoc subinfo :oldest-loan-time)))
-																																	 new-pre-session (conj @session-data pre-session)
-																																	 _ (reset! session-data new-pre-session)]
-																															 (log/infof "new state [%s,%s]" state @session-data)
-																															 (db/updateSession {:session-id session-id :subscriber subscriber :state state :session-data (str pre-session)}))
+																						  rand (format "%04d" (rand-int 9999))
+																						  request-id (str timestamp rand)]
+																						(biginteger request-id))
+																		 subinfo (getSubscriberInfo subscriber)
+																		 pre-session (conj {:session-id   session-id :subscriber subscriber
+																							:service-code service-code :ussd-string input :ma-balance 0 :request-id request-id}
+																						 (reduce conj {} (dissoc subinfo :oldest-loan-time)))
+																		 new-pre-session (conj @session-data pre-session)
+																		 _ (reset! session-data new-pre-session)]
+																	   (log/infof "new state [%s,%s]" state @session-data)
+																	   (db/updateSession {:session-id session-id :subscriber subscriber :state state :session-data (str pre-session)}))
 			(some #{state} [:lend-airtime :lend-data]) (let [{:keys [request-id loan-type max-loanable amount-requested amount-net serviceq menu-3p]} @session-data
-																											 _ (log/debugf "processing for loan => %s" @session-data)
-																											 msisdn-3p (when menu-3p
-																																	 (utils/submsisdn input))
-																											 _ (reset! session-data (assoc @session-data :msisdn-3p msisdn-3p :type state
-																																																	 :outstanding (int (/ (- max-loanable (+ amount-net serviceq)) 1000))))]
-																									 (with-request-params [subscriber session-id request-id amount-requested serviceq max-loanable]
-																																				(let [{:keys [advance_name]} (db/get-loan-period (verify-loan-type state) amount-requested)]
-																																					(when-not (proceedLend {:loan-type        (verify-loan-type state)
-																																																	:subscriber       subscriber :service-class service-class :session-id session-id :direct? is-new?
-																																																	:advance-name     advance_name :request-id request-id
-																																																	:amount-requested amount-requested :serviceq serviceq :max-loanable max-loanable
-																																																	:channel          :ussd :short-code service-code :misc-args {:profile profile-id} :loan_count loan-count})
-																																						(reset! session-data (session-data-update @session-data :state (verify-loan-failure state)))))))
+															 _ (log/debugf "processing for loan => %s" @session-data) msisdn-3p (when menu-3p (utils/submsisdn input))
+															 _ (reset! session-data (assoc @session-data :msisdn-3p msisdn-3p :type state :outstanding (int (/ (- max-loanable (+ amount-net serviceq)) 1000))))]
+														   (with-request-params [subscriber session-id request-id amount-requested serviceq max-loanable]
+															   (let [{:keys [advance_name]} (db/get-loan-period (verify-loan-type state) amount-requested)]
+																   (when-not (proceedLend {:loan-type        (verify-loan-type state)
+																						   :subscriber       subscriber :service-class service-class :session-id session-id :direct? is-new?
+																						   :advance-name     advance_name :request-id request-id
+																						   :amount-requested amount-requested :serviceq serviceq :max-loanable max-loanable
+																						   :channel          :ussd :short-code service-code :misc-args {:profile profile-id} :loan_count loan-count})
+																	   (reset! session-data (session-data-update @session-data :state (verify-loan-failure state)))))))
 			:trigger-rec (with-request-params [subscriber] (rmqutils/trigger-recovery {:sub     subscriber
-																																								 :amt     (/ loan-balance 1000)
-																																								 :reQTime (System/currentTimeMillis)}))
+																					   :amt     (/ loan-balance (env :denom-factor))
+																					   :reQTime (System/currentTimeMillis)}))
+			:convert-to-data (with-request-params [subscriber] (let [{:keys [subscriber_fk loan_id cedis_loaned] :as getLoan}  (db/selectLoan {:subscriber subscriber})
+																															 _ (log/infof "convertToData [%s]"getLoan)]
+																													  (if (empty? getLoan)
+																															{:status "failed" :message "not found"}
+																															(let [resp (vtu/process-data-loan subscriber_fk cedis_loaned loan_id)]
+																																resp))))
 			true)
 		;; Handle persistence.
 		(if (menu/final-state-p state)
@@ -191,7 +195,6 @@
 					(log/debugf "tracking session %s|%s"session-id subscriber )
 					(start-new-session @session-data))
 				(do
-					(log/debugf "userSessionNotNew %s|%s|%s" is-new? session-id subscriber)
 					;(set-session-data session-id subscriber @session-data)
 
 					(db/updateSession {:session-id   session-id :subscriber subscriber
@@ -217,7 +220,7 @@
 			false)))
 
 
-(defn-  lend [{:keys [request-id subscriber service-class loan-type
+(defn- lend [{:keys [request-id subscriber service-class loan-type
 											amount-requested serviceq max-loanable channel
 											loan_count charging_method] :as args}]
 	(do
@@ -235,15 +238,16 @@
 
 
 (defn- new-loan-request [request_id subscriber loan_type channel amount serviceq max_loanable loan_count charging_method]
-	(let [loan_type (condp = loan_type
-										:airtime "airtime"
-										:data    "data"
+	(let [[loan_type flag] (condp = loan_type
+						:airtime ["airtime" true]
+						:data    ["data" false]
 										(throw (Exception. (format "UndefinedloanType(%s)" loan_type))))
 				loan_flags (bit-or (if (db/serviceq-post-charged? charging_method) 2r00000001 0)
 													 (if (db/serviceq-after-grace-period? charging_method) 2r00000010 0))
 				channel (name channel)
 				values {:request-id request_id :subscriber subscriber :loan_flags loan_flags :loan_type loan_type
-								:channel channel :amount amount :serviceq serviceq :max_loanable max_loanable :loan_count loan_count}
+								:channel channel :amount amount :serviceq serviceq :max_loanable max_loanable :loan_count loan_count
+								:flag_done flag}
 				_ (log/debugf "new loan request values %s" values)]
 		(db/insert-tbl-loan-req values)))
 

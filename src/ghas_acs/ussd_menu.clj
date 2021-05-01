@@ -21,6 +21,8 @@
 
 (declare %nfa-automaton-def %ussd-renderer-def %state-initializer-def directstring-automaton-def)
 
+
+
 (defn define-nfa
 	"Define a non-deterministic finite automaton and related
 	functions. The generated automaton accepts 2 parameters:
@@ -101,7 +103,7 @@
 						 ;; ---
 						 {:keys [~'subscriber ~'state ~'language ~'subscriber-flags ~'account-status ~'age-on-network
 										 ~'queue-count ~'queue-total ~'loan-balance ~'ma-balance ~'max-loanable ~'max-qualified
-										 ~'amount-requested ~'amount-gross ~'amount-net ~'serviceq ~'ussd-string ~'outstanding]}
+										 ~'amount-requested ~'amount-gross ~'amount-net ~'serviceq ~'ussd-string ~'outstanding ~'loan-type]}
 						 @~session-data-var]
 				 (let [current-state# (~'session :state)]
 					 (condp = current-state#
@@ -177,7 +179,7 @@ State text definition:
 																																																		 (map (fn [elt#]
 																																																						(condp = (type elt#)
 																																																							String `(print ~elt#)
-																																																							Keyword `(print (~'%param ~elt#))
+																																																							Keyword `(print (~'%param ~elt# (env :denom-factor)))
 																																																							(throw (Exception. (format "unexpectedCompositeType(%s,text=%s)"
 																																																																				 (type elt#) elt#)))))
 																																																					text#)]
@@ -193,13 +195,16 @@ State text definition:
 			 (let [~'session  (fn [field#]
 													;(log/debugf "session-data params" ~(~session-data-var field#))
 													(~session-data-var field#))
-						 ~'%param (fn [param#]
+						 ~'%param (fn [param# factor#]
 												(let [value# (param# ~session-data-var)]
 													(when (nil? value#)
 														(log/errorf "unexpectedNullParam(%s, session=%s)" param# ~session-data-var))
 													(if (param# #{:queue-total :loan-balance :max-loanable :max-qualified :amount-requested
-																				:serviceq :amount-net :amount-gross :menu-3p})
-														(str (/ value# 1000))
+																				:serviceq :amount-net :amount-gross :menu-3p :loan-type})
+														(let [calval# (double (/ value# factor#))]
+															(if (= (mod calval# 10) 0.0)
+																(str (int calval#))
+																(str calval#)))
 														value#)))
 						 {:keys [~'ma-balance ~'max-loanable]} ~session-data-var
 						 ~'mabal-above-limit? (fn [amount#]
@@ -232,7 +237,7 @@ State text definition:
 						 {:keys [~'subscriber ~'state ~'language ~'subscriber-flags ~'account-status ~'age-on-network
 										 ~'queue-count ~'queue-total ~'loan-balance ~'max-qualified ~'max-loanable
 										 ~'amount-requested ~'amount-gross ~'amount-net ~'serviceq ~'ussd-string
-										 ~'outstanding]}
+										 ~'outstanding ~'loan-type]}
 						 ~session-data-var
 						 ;; ---
 						 ~'subflag? (fn [bit#]
@@ -272,7 +277,7 @@ State text definition:
 						 {:keys [~'subscriber ~'state ~'language ~'subscriber-flags ~'account-status ~'age-on-network
 										 ~'queue-count ~'queue-total ~'loan-balance ~'ma-balance ~'max-loanable ~'max-qualified
 										 ~'amount-requested ~'amount-gross ~'amount-net ~'serviceq ~'ussd-string
-										 ~'outstanding ~'menu-3p ~'type]}
+										 ~'outstanding ~'menu-3p ~'type ~'loan-type]}
 						 @~session-data-var
 						 ;; ---
 						 ~'check-menu? (fn [] (if ~'menu-3p true false))

@@ -45,32 +45,7 @@
 											 (throw (Exception. (format "unableToConnectToRabbitmq[%s]" (.getMessage e)))))))
 ;;
 
-(defn monitor-request-handler
-	[ch {:keys [delivery-tag] :as meta} ^bytes payload]
-	(let [payload (json/read-json (String. payload "UTF-8"))
-				sub (utils/submsisdn (:subscriber payload))
-				channel (:channel payload)
-				url (get-in env [:queue :pe :monitor-url])
-				timeout (get-in env [:queue :pe :monitor-url-timeout])]
-		(log/debugf "[monitor consumer] payload: %s, delivery tag: %d, -> %s"
-								payload delivery-tag meta)
 
-		(utils/with-func-timed "callMonitorPE" (fn [error]
-																						 (let [_ (log/error "!callMonitorPE ->" (.getMessage error))
-																									 channel (:channel @send-pe-details)
-																									 nack (when-not (nil? @channel)
-																													(lb/nack @channel delivery-tag false true)
-																													:nack)]
-																							 {:action :ack :value nack}))
-													 (let [{:keys [action]} (utils/callURL url sub timeout)
-																 channel (:channel @send-pe-details)]
-														 (if (= action :nack)
-															 (do
-																 (lb/nack @channel delivery-tag false true)
-																 {:action :ack :value :requeue})
-															 (do
-																 (lb/ack @channel delivery-tag)
-																 {:action :ack :value :ack}))))))
 ;[consumer] Received a message: {"msisdn":8156545907,"id":15981342110806992,"message":"Dear Customer, you have been credited with N43 airtime at N7 service charge. Please recharge by 2020-08-25 22:10:17 to repay your advance.","flash?":false,"from":"Borrow Me"}, delivery tag: 2, content type: null
 
 
@@ -82,31 +57,33 @@
 			(let [getMessage (fn [type gross-amount]
 												 (binding [value gross-amount]
 													 (let [sms-value (if (= type :airtime)
-																						 (get-in env [:as :msg :sms-airtime-lend-ok])
-																						 (get-in env [:as :msg :sms-data-lend-ok]))
-																 ;_ (log/debugf "fqns value=%s|gross=%s" value gross-amount)
-																 ]
+																		 (get-in env [:as :msg :sms-airtime-lend-ok])
+																		 (get-in env [:as :msg :sms-data-lend-ok]))
+														   ;_ (log/debugf "fqns value=%s|gross=%s" value gross-amount)
+														   ]
 														 (eval sms-value))))
 						;sms-airtime-lend-ok (get-in env [:as :msg :sms-airtime-lend-ok])
 						sms-airtime-lend-failed (get-in env [:as :msg :sms-airtime-lend-failed])
 						sms-airtime-lend-unrecon (get-in env [:as :msg :sms-airtime-lend-unrecon])
 						;sms-data-lend-ok (get-in env [:as :msg :sms-data-lend-ok])
 						sms-data-lend-failed (get-in env [:as :msg :sms-data-lend-failed])
-						sms-data-lend-unrecon (get-in env [:as :msg :sms-data-lend-unrecon])
-						sms-sender-name (get-in env [:as :msg :sms-sender-name])
-						msg (utils/get-message (condp = type
-																		 :airtime-lend-ok (format (getMessage :airtime (+ principal serviceq))
-																															(utils/cedis principal) (utils/cedis serviceq) repay-time)
-																		 ;(format sms-airtime-lend-ok (utils/cedis principal) (utils/cedis serviceq) repay-time)
-																		 :airtime-lend-failed (format sms-airtime-lend-failed (utils/cedis principal))
-																		 :airtime-lend-unrecon (format sms-airtime-lend-unrecon (utils/cedis principal))
-																		 :data-lend-ok   (format (getMessage :data (+ principal serviceq))
-																														 advance-name repay-time)
-																		 ;(format sms-data-lend-ok  advance-name repay-time)
-																		 :data-lend-failed (format sms-data-lend-failed advance-name)
-																		 :data-lend-unrecon (format sms-data-lend-unrecon (utils/cedis principal))
-																		 (throw (Exception. (format "UndefinedSMSType(%s)" type))))
-																	 args)
+				  sms-data-lend-unrecon (get-in env [:as :msg :sms-data-lend-unrecon])
+				  sms-data-lend-not-processed (get-in env [:as :msg :sms-data-lend-not-processed])
+				  sms-sender-name (get-in env [:as :msg :sms-sender-name])
+				  msg (utils/get-message (condp = type
+											 :airtime-lend-ok (format (getMessage :airtime (+ principal serviceq))
+																  (utils/cedis principal) (utils/cedis serviceq) repay-time)
+											 ;(format sms-airtime-lend-ok (utils/cedis principal) (utils/cedis serviceq) repay-time)
+											 :airtime-lend-failed (format sms-airtime-lend-failed (utils/cedis principal))
+											 :airtime-lend-unrecon (format sms-airtime-lend-unrecon (utils/cedis principal))
+											 :data-lend-ok	(format (getMessage :data (+ principal serviceq))
+																  advance-name repay-time)
+											 ;(format sms-data-lend-ok  advance-name repay-time)
+											 :data-lend-failed (format sms-data-lend-failed advance-name)
+											 :data-lend-not-processed (format sms-data-lend-not-processed advance-name)
+											 :data-lend-unrecon (format sms-data-lend-unrecon (utils/cedis principal))
+											 (throw (Exception. (format "UndefinedSMSType(%s)" type))))
+						  args)
 						_ (log/infof "sendSMS(%s,%s,%s) -> %s" request-id subscriber type msg)]
 				(initialize-rabbitmq (assoc @send-sms-details :msg {:msisdn subscriber
 																													 :id request-id
@@ -117,10 +94,6 @@
 				(log/errorf ex "cannotSendSMS(%s,%s,%s) -> %s" request-id subscriber type (.getMessage ex))))))
 
 
-(defn send-pe-notif [args]
-	(do
-		(log/infof "sendPEMonitorRequest(%s)" args)
-		(initialize-rabbitmq (assoc @send-pe-details :msg args))))
 
 
 (defn trigger-recovery [args]
@@ -189,20 +162,7 @@
 																				 :queue-name (get-in env [:queue :sms :queue-name])
 																				 :queue-exchange (get-in env [:queue :sms :queue-exchange])
 																				 :queue-routing-key (get-in env [:queue :sms :queue-routing-key])})
-								(reset! send-pe-details {:host     (get-in env [:queue :pe :host])
-																				:port     (get-in env [:queue :pe :port])
-																				:username (get-in env [:queue :pe :username])
-																				:password (get-in env [:queue :pe :password])
-																				:vhost    (get-in env [:queue :pe :vhost])
-																				 :conn            (atom nil)
-																				 :channel         (atom nil)
-																				; queue info
-																				:queue-name (get-in env [:queue :pe :queue-name])
-																				:queue-exchange (get-in env [:queue :pe :queue-exchange])
-																				:queue-routing-key (get-in env [:queue :pe :queue-routing-key])
-																				 :consumers (get-in env [:queue :pe :consumers])
-																				:handler monitor-request-handler
-																				})
+
 								(reset! send-recovery-details {
 																							:host     (get-in env [:queue :recovery :host])
 																							:port     (get-in env [:queue :recovery :port])

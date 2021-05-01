@@ -47,28 +47,27 @@
 																 (doall (reduce (fn [ret [loan-type amount max-bal]]
 																									(assoc ret [(keyword loan-type) amount] max-bal))
 																								{}  (get-loan-max-bals)))))
+
 	(reset! loan-periods (get-loan-periods)))
 
 
 (defn getService [sq [loan_type amount]]
-	(do
-		(log/debugf "serviceq=%s"sq)
-		(loop [v (first sq)
-					 vx (next sq)]
-			(if (nil? v)
-				(throw (ex-info "No matching service fee"
-												{:error-class :no-matching-service-fee :amount amount
-												 :loan_type loan_type}))
-				(let [loan_typ (:loan_type v)
-							loan_amt (:loanable_amount v)
-							serviceq (:nullif v)
-							serviceq-amt (:nullif_2 v)]
-					(if (and (= (keyword loan_typ) loan_type)
-									 (= loan_amt amount))
-						(cond (and serviceq serviceq-amt) nil
-									serviceq-amt serviceq-amt
-									serviceq  (* amount (/ serviceq 100)))
-						(recur (first vx) (next vx))))))))
+	(loop [v (first sq)
+		   vx (next sq)]
+		(if (nil? v)
+			(throw (ex-info "No matching service fee"
+					   {:error-class :no-matching-service-fee :amount amount
+						:loan_type loan_type}))
+			(let [loan_typ (:loan_type v)
+				  loan_amt (:loanable_amount v)
+				  serviceq (:nullif v)
+				  serviceq-amt (:nullif_2 v)]
+				(if (and (= (keyword loan_typ) loan_type)
+						(= loan_amt amount))
+					(cond (and serviceq serviceq-amt) nil
+						serviceq-amt serviceq-amt
+						serviceq  (* amount (/ serviceq 100)))
+					(recur (first vx) (next vx)))))))
 
 
 (defn getLoanPeriod [ld [loan_type amount]]
@@ -145,10 +144,7 @@
 	(insertVtopCreditReq values))
 
 (defn updateVtopReqStatus [values]
-	(let [resp-status (:resp-status values)
-				error-code	(:error-code values)]
-		(procUpdateVtopReqStatus values)
-		{:status (keyword resp-status) :error-code (keyword error-code)}))
+	(procUpdateVtopReqStatus values))
 
 
 
@@ -174,7 +170,11 @@
 	(close-session! values))
 
 
+(defn updateDataStatus [values]
+	(proc_update_data_status values))
 
+(defn selectLoan [values]
+	(select-loan values))
 
 (defn pgobj->clj [^org.postgresql.util.PGobject pgobj]
 	(let [type (.getType pgobj)

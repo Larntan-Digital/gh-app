@@ -79,18 +79,19 @@
   ;(log/infof "env=>%s"env)
   (let [ussd-session-cleanup-interval (get-in env [:as :ussd :ussd-session-cleanup-interval] 60)
         recon-lending-interval (get-in env [:pg :recon-lending-interval])
+        factor (env :denom-factor)
         _ (db/load-denom-config)
         _ (when-not (nil? (get-in env [:as :ussd :ussd-menu-def]))
             (log/infof "ussd menu def %s" (get-in env [:as :ussd :ussd-menu-def]))
             (when-let [menu-def (File. (get-in env [:as :ussd :ussd-menu-def]))]
-              (if (.exists #^File menu-def)
+              (if (and (.exists #^File menu-def) factor)
                 (let [{:keys [transition-table state-texts state-initializer]}
                       (with-open [s (PushbackReader. (StringReader. (utils/get-file-contents menu-def)))]
                         {:transition-table (read s) :state-texts (read s) :state-initializer (read s)})
                       _(menu/define-nfa transition-table)
                       _(menu/define-state-renderer state-texts)
                       _(menu/define-state-initializer state-initializer)])
-                (throw (RuntimeException. (format "!found(menu-definition,path=%s)" (str menu-def)))))
+                (throw (RuntimeException. (format "!found(menu-definition,path=%s or denom-factor=%s) " (str menu-def) factor))))
               (def ^:dynamic *language* :en)))
         _ (start-thread-creator ussd-session-cleanup-interval recon-lending-interval)
         _ (rmqutils/initialize-queue-interfaces)

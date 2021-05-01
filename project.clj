@@ -2,10 +2,9 @@
   :description "FIXME: write description"
   :url "http://example.com/FIXME"
   :min-lein-version "2.0.0"
-  :dependencies [[org.clojure/clojure "1.10.0"]
+  :dependencies [[org.clojure/clojure "1.10.3"]
                  [compojure "1.6.1"]
                  [ring/ring-defaults "0.3.2"]
-
                  [ch.qos.logback/logback-classic "1.2.3"]
                  [conman "0.8.6"]
                  [cprop "0.1.16"]
@@ -15,7 +14,7 @@
                  [org.clojure/data.xml "0.0.8"]
                  [org.clojure/core.async "1.1.587"]
                  [org.clojure/tools.cli "1.0.194"]
-                 [clj-http "3.10.0"]
+                 [clj-http "3.12.0"]
                  [clj-time "0.15.2"]
                  [org.clojure/tools.logging "1.0.0"]
                  [org.postgresql/postgresql "42.2.11"]

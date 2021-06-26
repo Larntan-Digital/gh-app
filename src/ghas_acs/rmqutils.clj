@@ -55,13 +55,13 @@
 	(let [{:keys [request-id subscriber repay-time principal advance-name serviceq gross-amount]} args]
 		(try
 			(let [getMessage (fn [type gross-amount]
-												 (binding [value gross-amount]
-													 (let [sms-value (if (= type :airtime)
-																		 (get-in env [:as :msg :sms-airtime-lend-ok])
-																		 (get-in env [:as :msg :sms-data-lend-ok]))
-														   ;_ (log/debugf "fqns value=%s|gross=%s" value gross-amount)
-														   ]
-														 (eval sms-value))))
+								 (binding [value gross-amount]
+									 (let [sms-value (if (= type :airtime)
+														 (get-in env [:as :msg :sms-airtime-lend-ok])
+														 (get-in env [:as :msg :sms-data-lend-ok]))
+										   ;_ (log/debugf "fqns value=%s|gross=%s" value gross-amount)
+										   ]
+										 (eval sms-value))))
 						;sms-airtime-lend-ok (get-in env [:as :msg :sms-airtime-lend-ok])
 						sms-airtime-lend-failed (get-in env [:as :msg :sms-airtime-lend-failed])
 						sms-airtime-lend-unrecon (get-in env [:as :msg :sms-airtime-lend-unrecon])

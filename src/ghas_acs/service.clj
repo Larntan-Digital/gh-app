@@ -93,10 +93,10 @@
 			(do
 				(swap! *countof-error-ussd-sessions* inc)
 				(log/error (format "CannotHandleMenu(%s) => %s"
-													 [session-id subscriber is-new? input] (.getMessage e)) e)
+							   [session-id subscriber is-new? input] (.getMessage e)) e)
 				(make-response (if (= "duplicatedSessionID" (.getMessage e))
-																		(get-in env [:as :msg :as-duplicate-error-msg])
-																		(get-in env [:as :msg :as-error-msg]) )  :terminate)))))
+								   (get-in env [:as :msg :as-duplicate-error-msg])
+								   (get-in env [:as :msg :as-error-msg]) )  :terminate)))))
 
 (defn getSubscriberInfo [subscriber]
 	(into {} (map (fn [[k v]]
@@ -165,7 +165,7 @@
 																	   (db/updateSession {:session-id session-id :subscriber subscriber :state state :session-data (str pre-session)}))
 			(some #{state} [:lend-airtime :lend-data]) (let [{:keys [request-id loan-type max-loanable amount-requested amount-net serviceq menu-3p]} @session-data
 															 _ (log/debugf "processing for loan => %s" @session-data) msisdn-3p (when menu-3p (utils/submsisdn input))
-															 _ (reset! session-data (assoc @session-data :msisdn-3p msisdn-3p :type state :outstanding (int (/ (- max-loanable (+ amount-net serviceq)) 1000))))]
+															 _ (reset! session-data (assoc @session-data :msisdn-3p msisdn-3p :type state :outstanding (int (/ (- max-loanable (+ amount-net serviceq)) (env :denom-factor)))))]
 														   (with-request-params [subscriber session-id request-id amount-requested serviceq max-loanable]
 															   (let [{:keys [advance_name]} (db/get-loan-period (verify-loan-type state) amount-requested)]
 																   (when-not (proceedLend {:loan-type        (verify-loan-type state)
@@ -175,14 +175,19 @@
 																						   :channel          :ussd :short-code service-code :misc-args {:profile profile-id} :loan_count loan-count})
 																	   (reset! session-data (session-data-update @session-data :state (verify-loan-failure state)))))))
 			:trigger-rec (with-request-params [subscriber] (rmqutils/trigger-recovery {:sub     subscriber
-																					   :amt     (/ loan-balance (env :denom-factor))
-																					   :reQTime (System/currentTimeMillis)}))
-			:convert-to-data (with-request-params [subscriber] (let [{:keys [subscriber_fk loan_id cedis_loaned] :as getLoan}  (db/selectLoan {:subscriber subscriber})
-																															 _ (log/infof "convertToData [%s]"getLoan)]
-																													  (if (empty? getLoan)
-																															{:status "failed" :message "not found"}
-																															(let [resp (vtu/process-data-loan subscriber_fk cedis_loaned loan_id)]
-																																resp))))
+																					   :amount 	loan-balance               ;(/ loan-balance (env :denom-factor))
+																					   :time 	(f/unparse
+																									(f/formatter "yyyyMMddHHmmss") (t/now))
+																					   :attempts 0
+																					   :time-queued (System/currentTimeMillis)
+																					   :type "manual",
+																					   :channel "manual"}))
+			:convert-to-data (with-request-params [subscriber] (let [{:keys [subscriber_fk loan_id cedis_loaned cedis_serviceq expected_repay_time] :as getLoan}  (db/selectLoan {:subscriber subscriber})
+																	 _ (log/infof "convertToData [%s]"getLoan)]
+																   (if (empty? getLoan)
+																	   {:status "failed" :message "not found"}
+																	   (let [resp (vtu/process-data-loan subscriber_fk cedis_loaned loan_id {:cedis_loaned cedis_loaned :cedis_serviceq cedis_serviceq :expected_repay_time expected_repay_time})]
+																		   resp))))
 			true)
 		;; Handle persistence.
 		(if (menu/final-state-p state)
@@ -196,10 +201,9 @@
 					(start-new-session @session-data))
 				(do
 					;(set-session-data session-id subscriber @session-data)
-
 					(db/updateSession {:session-id   session-id :subscriber subscriber
-														 :session-data (str (reset! session-data (conj @session-data (when (= (:state @session-data) :menu-others)
-																																													 {:menu-3p true}))))}))))
+									   :session-data (str (reset! session-data (conj @session-data (when (= (:state @session-data) :menu-others)
+																														 {:menu-3p true}))))}))))
 		(log/debugf "Returning session for rendering %s" @session-data)
 		;; Return session data for rendering purposes.
 		@session-data))
@@ -213,7 +217,7 @@
 					{:keys [date_part charging_method] :as loan_period} (db/get-loan-period loan-type amount-requested)
 					_ (log/debugf "loan_period=%s|%s"subscriber loan_period)
 					repay-time (f/unparse
-											 (f/formatter "EEE, dd MMM yyyy") (t/plus now (t/seconds date_part)))]
+								   (f/formatter "EEE, dd MMM yyyy") (t/plus now (t/seconds date_part)))]
 			(lend (conj {} args {:repay-time repay-time :charging_method (keyword charging_method)})))
 		(catch Exception e
 			(log/error (format "unableToLend(%s,%s,%s,%s) -> %s" subscriber request-id amount-requested loan-type e) e)
@@ -221,17 +225,17 @@
 
 
 (defn- lend [{:keys [request-id subscriber service-class loan-type
-											amount-requested serviceq max-loanable channel
-											loan_count charging_method] :as args}]
+					 amount-requested serviceq max-loanable channel
+					 loan_count charging_method] :as args}]
 	(do
 		(utils/increment-counter *countof-loan-requests* amount-requested)
 		(let [_ (log/debugf "lending details %s"args)
 					repay     (db/get-gross-amount loan-type amount-requested charging_method)
 					principal (db/get-net-amount loan-type amount-requested charging_method)
 					newargs (conj {} args {:to-repay repay :principal principal
-																 :id request-id :name name
-																 :original-sc service-class
-																 :typ loan-type})]
+										   :id request-id :name name
+										   :original-sc service-class
+										   :typ loan-type})]
 			(new-loan-request request-id subscriber loan-type channel amount-requested serviceq max-loanable (inc loan_count) charging_method)
 			(log/infof "processingForVTU %s"newargs)
 			(vtu/process-lend newargs))))

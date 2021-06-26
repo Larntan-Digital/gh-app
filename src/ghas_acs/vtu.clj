@@ -13,12 +13,14 @@
 			  [clojure.xml :as xml]
 			  [clojure.data.zip.xml :as zip-xml :only [xml1 text]]
 			  [ghas-acs.counters :as counters]
-			  [clojure.core.async :as async]]
+			  [clojure.core.async :as async]
+			  [clj-time.core :as t]]
 	(:use [ghas-acs.counters])
 	(:import (org.joda.time.format DateTimeFormat)
 			 (java.io ByteArrayInputStream File)
 			 (java.net SocketTimeoutException ConnectException ProtocolException NoRouteToHostException)
-			 (java.util.concurrent TimeoutException)))
+			 (java.util.concurrent TimeoutException)
+			 (org.joda.time ReadableInstant)))
 
 
 
@@ -83,6 +85,7 @@
 		"94" :dup-txn-failed
 		"96" :charging-system-error
 		"98" :txn-limit-exceeded
+		"104" :insufficient-sender-credit
 		"A8" :bad-sub-status
 		"A9" :bad-msisdn
 		status))
@@ -112,7 +115,6 @@
 		  payload     {:user-agent      "ERL/http"
 					   :connection-timeout (get-in env [:pg :pg-timeout-credit])
 					   :socket-timeout     (get-in env [:pg :pg-timeout-credit])
-
 					   :body            request
 					   :headers         {"Content-Type" "application/xml"}}
 		  _           (log/infof "PG Request %s -> [%s]" fullUrl payload)
@@ -153,7 +155,7 @@
 (def ^:dynamic bundleid nil)
 
 
-(defn process-data-loan [subscriber amount-requested loan-id]
+(defn process-data-loan [subscriber amount-requested loan-id loaninfo]
 	(let [url (get-in env [:pg :profit-guru])
 		  options    {:type :post
 					  :user-agent      "ERL/http"
@@ -169,14 +171,40 @@
 						   (throw (ex-info "No matching bundle id for amount."
 									  {:error-class :no-matching-bundle-id :amount amount-requested :bundleid bundleid})))))
 		  path (str url "/subscribe/" (utils/validate-sub subscriber) "?plan="plan"&charge=true")
-		  _ (log/infof "Calling ProfitGuru request -> %s" path)
+		  _ (log/infof "Calling ProfitGuru request -> %s|%s" path loaninfo)
 		  {:keys [error body] :as response} (call-endpoint "profitGuru" path options {:type :post :opt nil})
-		  _          (log/infof "profitGuru respose [%s]" response)]
-		(if (= "success" body)
-			(do
-				(db/updateDataStatus {:loan_id loan-id})
-				:ok)
-			:failed)))
+		  _ (log/infof "profitGuru response [sub=%s|body=%s|error=%s]" subscriber body (when error (.getMessage error)))
+		  state (if (= "success" body)
+					(do
+						(when-not (nil? loaninfo)
+							(db/updateDataStatus {:loan_id loan-id}))
+						:ok)
+					:failed)]
+	(if (nil? loaninfo)
+		state
+		(let [{:keys [cedis_loaned cedis_serviceq expected_repay_time]} loaninfo
+			  _ (log/infof "Processing sms for airtime-to-data conversion(%s|%s)" subscriber {:cedis_loaned cedis_loaned
+																							  :cedis_serviceq :cedis_serviceq
+																							  :expected_repay_time expected_repay_time})
+			  principal (- cedis_loaned cedis_serviceq)
+			  repay-time (f/unparse (f/formatter "EEE, dd MMM yyyy")
+							 (-> (t/default-time-zone)
+								 (f/formatter "YYYY-MM-dd'T'HH:mm:ss.SSSSSS" "YYYY-MM-dd")
+								 (f/parse (.toString ^ReadableInstant expected_repay_time))))
+			  {:keys [advance_name]} (db/get-loan-period :data cedis_loaned)]
+			(if (= state :ok)
+				(do
+					(reset! *amountof-successful-loans* (+ principal @*amountof-successful-loans*))
+					(async/go
+						(rmqutils/send-sms :data-lend-ok {:request-id loan-id :subscriber subscriber :loan-type :data
+														  :to-repay   cedis_loaned :advance-name advance_name :serviceq cedis_serviceq
+														  :repay-time repay-time :principal principal :gross-amount cedis_loaned})))
+				(do
+					(reset! *amountof-failed-data-loans* (+ principal @*amountof-failed-data-loans*))
+					(async/go
+						(rmqutils/send-sms :data-lend-not-processed {:request-id loan-id :subscriber subscriber :loan-type :data
+																	 :to-repay   cedis_loaned :advance-name advance_name :serviceq cedis_serviceq
+																	 :repay-time repay-time :principal principal :gross-amount cedis_loaned}))))))))
 
 
 (defn process-lend [args]
@@ -205,11 +233,13 @@
 			  )]
 		(db/updateVtopReqStatus {:request-id request-id :status (status-value status) :error error-status
 								 :time_processed  time-processed :external-response-code external-response-code
-								 :external-txn-id external-txn-id :post-event-balance (if (nil? post-event-balance)
-																						  (* post-event-balance (env :denom-factor))
+								 :external-txn-id external-txn-id :post-event-balance (if (not (nil? post-event-balance))
+																						  (* (utils/toInt post-event-balance)
+																							  (env :denom-factor))
 																						  0)})
 		(if (= status :ok) (let [state (if (= loan-type :data)
-										   (process-data-loan subscriber amount-requested request-id)
+										   ;;if its a data request call profit guru
+										   (process-data-loan subscriber amount-requested request-id nil)
 										   :ok)]
 							   (if (= state :ok)
 								   (do
@@ -217,13 +247,14 @@
 									   (async/go
 										   (rmqutils/send-sms msg-succ-type {:request-id request-id :subscriber subscriber :loan-type loan-type
 																	 :to-repay   to-repay :advance-name advance-name :serviceq serviceq
-																	 :repay-time repay-time :principal principal :gross-amount (+ principal serviceq)})))
+																	 :repay-time repay-time :principal principal :gross-amount (+ principal serviceq)}))
+									   true)
 								   (do
 									   (reset! *amountof-failed-data-loans* (+ principal @*amountof-failed-data-loans*))
 									   (async/go
 										   (rmqutils/send-sms :data-lend-not-processed {:request-id request-id :subscriber subscriber :loan-type loan-type
 																						:to-repay   to-repay :advance-name advance-name :serviceq serviceq
-																						:repay-time repay-time :principal principal :gross-amount (+ principal serviceq)}))))
-							   true)
+																						:repay-time repay-time :principal principal :gross-amount (+ principal serviceq)}))
+									   false)))
 			false)))
 

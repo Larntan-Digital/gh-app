@@ -15,7 +15,7 @@
 			:msg {:msg-as-unreconciled-state 	"Dear Customer, your Borrow Me Credit request is still pending. Please be patient.\n"
 				  :msg-qualification-failure	"Dear Customer, you cannot get Borrow Me Credit at this time. Please keep your Glo line active and you will be notified when you qualify.\n"
 				  :msg-postpaid					"Dear Customer, the Borrow Me Credit service is only accessible to prepaid Customers."
-				  :as-error-msg					"Dear Customer, your request stopped unexpectedly at this time. Please try again later"
+				  :as-error-msg					"Dear Customer, we are unable to process your advance. Please try again later"
 				  :as-duplicate-error-msg 	"Dear Customer, duplicate session identifier is found in your request. Please try again later"
 
 				  :sms-airtime-lend-ok			(condp = ghas-acs.rmqutils/value
@@ -42,7 +42,7 @@
 				  :sms-data-lend-failed		"Dear Customer, your %s data advance request was not successful."
 				  :sms-data-lend-not-processed "Dear Customer, your %s data advance request was not completed. Please dial *5321*4# to complete the process"
 				  :sms-data-lend-unrecon	"Dear Customer, your %s data advance request is still being processed. Please be patient."
-				  :sms-sender-name         	"Borrow Me"
+				  :sms-sender-name         	""
 				  }
 			}
  :vtu		"http://127.0.0.1:8990/vtu/lend"

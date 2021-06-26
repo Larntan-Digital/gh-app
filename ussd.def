@@ -1,10 +1,11 @@
 (
  (:prepaid-only)
+ (:trigger-rec)
  (:has-unpaid-loan)
  (:has-loan-on-queue)
  (:not-qualified)
  (:max-bmc-limit)
- (:trigger-rec)
+
  (:convert-to-data)
 
  (:menu
@@ -283,27 +284,27 @@
 
 
 (
- ((and (= ussd-string "*5321*9*9#")  (= queue-count 0) (> loan-balance 0)) 		() :trigger-rec)
- ((and (= ussd-string "*5321*4#")  (= queue-count 0) (= loan-balance amount-gross)) () :convert-to-data)
- ((and (= ussd-string "*5321*4#")  (= queue-count 0) (= outstanding amount-gross)) 		() :convert-to-data)
+ ((and (= ussd-string "*5321*9*9")  (= queue-count 0) (> loan-balance 0)) 		() :trigger-rec)
+ ((and (= ussd-string "*5321*4")  (= queue-count 0) (= loan-balance amount-gross)) () :convert-to-data)
+ ((and (= ussd-string "*5321*4")  (= queue-count 0) (= outstanding amount-gross)) 		() :convert-to-data)
  ((and (= max-qualified 0) (= queue-count 0) (= max-loanable 0) (= queue-total 0)) 	() :not-qualified)
  ;((and (= queue-count 0) (> queue-total 1)) 					 	() :max-bmc-limit)
  ((and (> max-qualified 0) (> queue-count 0)) 						() :has-loan-on-queue)
  ((and (> loan-balance 0)(= queue-count 0) (= max-loanable 0) (>= queue-total 0))    	() :has-unpaid-loan)
  ;((and (= queue-count 0) ( = user-state :prepaid))					() :prepaid-only)
 
- ((and (= ussd-string "*5321*1#") (= queue-count 0) (>= max-loanable 5000) (>= queue-total 0)) () :borrow-now)
- ((and (= ussd-string "*5321*2#") (= queue-count 0) (>= max-loanable 5000) (>= queue-total 0)) () :borrow-data)
+ ((and (= ussd-string "*5321*1") (= queue-count 0) (>= max-loanable 5000) (>= queue-total 0)) () :borrow-now)
+ ((and (= ussd-string "*5321*2") (= queue-count 0) (>= max-loanable 5000) (>= queue-total 0)) () :borrow-data)
  
- ((and (= ussd-string "*5321*1*0#") (= queue-count 0) (>= max-loanable 5000) (>= queue-total 0)) ((session+ :amount-requested 5000 :serviceq (fee :airtime 5000) :amount-net (net :airtime 5000 :pre) :loan-type :airtime :advance-name "GHc0.5")) :lend-airtime)
+ ((and (= ussd-string "*5321*1*0") (= queue-count 0) (>= max-loanable 5000) (>= queue-total 0)) ((session+ :amount-requested 5000 :serviceq (fee :airtime 5000) :amount-net (net :airtime 5000 :pre) :loan-type :airtime :advance-name "GHc0.5")) :lend-airtime)
 
- ((and (= ussd-string "*5321*1*1#") (= queue-count 0) (>= max-loanable 10000) (>= queue-total 0)) ((session+ :amount-requested 10000 :serviceq (fee :airtime 10000) :amount-net (net :airtime 10000 :pre) :loan-type :airtime :advance-name "GHc1")) :lend-airtime)
- ((and (= ussd-string "*5321*1*2#") (= queue-count 0)(>= max-loanable 20000) (>= queue-total 0)) ((session+ :amount-requested 20000 :serviceq (fee :airtime 20000) :amount-net (net :airtime 20000 :pre) :loan-type :airtime :advance-name "GHc2")) :lend-airtime)
- ((and (= ussd-string "*5321*1*5#") (= queue-count 0) (>= max-loanable 50000) (>= queue-total 0)) ((session+ :amount-requested 50000 :serviceq (fee :airtime 50000) :amount-net (net :airtime 50000 :pre) :loan-type :airtime :advance-name "GHc5")) :lend-airtime)
+ ((and (= ussd-string "*5321*1*1") (= queue-count 0) (>= max-loanable 10000) (>= queue-total 0)) ((session+ :amount-requested 10000 :serviceq (fee :airtime 10000) :amount-net (net :airtime 10000 :pre) :loan-type :airtime :advance-name "GHc1")) :lend-airtime)
+ ((and (= ussd-string "*5321*1*2") (= queue-count 0)(>= max-loanable 20000) (>= queue-total 0)) ((session+ :amount-requested 20000 :serviceq (fee :airtime 20000) :amount-net (net :airtime 20000 :pre) :loan-type :airtime :advance-name "GHc2")) :lend-airtime)
+ ((and (= ussd-string "*5321*1*5") (= queue-count 0) (>= max-loanable 50000) (>= queue-total 0)) ((session+ :amount-requested 50000 :serviceq (fee :airtime 50000) :amount-net (net :airtime 50000 :pre) :loan-type :airtime :advance-name "GHc5")) :lend-airtime)
 
- ((and (= ussd-string "*5321*2*0#") (= queue-count 0) (>= max-loanable 5000) (>= queue-total 0)) ((session+ :amount-requested 5000 :serviceq (fee :data 5000) :amount-net (net :data 5000 :post) :bundle-size 43 :loan-type :data :advance-name "35MB")) :lend-data)
- ((and (= ussd-string "*5321*2*1#")(= queue-count 0) (>= max-loanable 10000) (>= queue-total 0)) ((session+ :amount-requested 10000 :serviceq (fee :data 10000) :amount-net (net :data 10000 :post) :bundle-size 85 :loan-type :data :advance-name "95MB")) :lend-data)
- ((and (= ussd-string "*5321*2*2#") (= queue-count 0)(>= max-loanable 20000) (>= queue-total 0)) ((session+ :amount-requested 20000 :serviceq (fee :data 20000) :amount-net (net :data 20000 :post) :bundle-size 170 :loan-type :data :advance-name "200MB")) :lend-data)
- ((and (= ussd-string "*5321*2*5#")(= queue-count 0) (>= max-loanable 50000) (>= queue-total 0)) ((session+ :amount-requested 50000 :serviceq (fee :data 50000) :amount-net (net :data 50000 :post) :bundle-size 425 :loan-type :data :advance-name "650MB")) :lend-data)
+ ((and (= ussd-string "*5321*2*0") (= queue-count 0) (>= max-loanable 5000) (>= queue-total 0)) ((session+ :amount-requested 5000 :serviceq (fee :data 5000) :amount-net (net :data 5000 :post) :bundle-size 43 :loan-type :data :advance-name "35MB")) :lend-data)
+ ((and (= ussd-string "*5321*2*1")(= queue-count 0) (>= max-loanable 10000) (>= queue-total 0)) ((session+ :amount-requested 10000 :serviceq (fee :data 10000) :amount-net (net :data 10000 :post) :bundle-size 85 :loan-type :data :advance-name "95MB")) :lend-data)
+ ((and (= ussd-string "*5321*2*2") (= queue-count 0)(>= max-loanable 20000) (>= queue-total 0)) ((session+ :amount-requested 20000 :serviceq (fee :data 20000) :amount-net (net :data 20000 :post) :bundle-size 170 :loan-type :data :advance-name "200MB")) :lend-data)
+ ((and (= ussd-string "*5321*2*5")(= queue-count 0) (>= max-loanable 50000) (>= queue-total 0)) ((session+ :amount-requested 50000 :serviceq (fee :data 50000) :amount-net (net :data 50000 :post) :bundle-size 425 :loan-type :data :advance-name "650MB")) :lend-data)
 (true () :menu)
  )

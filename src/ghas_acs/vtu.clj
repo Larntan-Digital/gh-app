@@ -170,11 +170,17 @@
 						   (eval datavalues)
 						   (throw (ex-info "No matching bundle id for amount."
 									  {:error-class :no-matching-bundle-id :amount amount-requested :bundleid bundleid})))))
-		  path (str url "/subscribe/" (utils/validate-sub subscriber) "?plan="plan"&charge=true")
+		  path  (format url (utils/validate-sub subscriber) plan)
+		  ;(str url "/subscribe/" (utils/validate-sub subscriber) "?plan="plan"&charge=true")
+		  ;http://10.161.139.5:18081/PrismWS/HSI/subscriptions/subscribe/%s?plan=%s&charge=true
+		  ;http://10.161.77.88/REWARD?msisdn=%s&campaign_name=BorrowMeData&reward_id=%s
+		  ;http://10.161.77.88/REWARD?msisdn=233xyz&campaign_name=BorrowMeData&reward_id=a
 		  _ (log/infof "Calling ProfitGuru request -> %s|%s" path loaninfo)
 		  {:keys [error body] :as response} (call-endpoint "profitGuru" path options {:type :post :opt nil})
 		  _ (log/infof "profitGuru response [sub=%s|body=%s|error=%s]" subscriber body (when error (.getMessage error)))
-		  state (if (= "success" body)
+		  parsebody (xml/parse (ByteArrayInputStream. (.getBytes body "UTF-8")))
+		  prism_result (get-in ((zip/xml-zip parsebody) 0) [:attrs :prism_result])
+		  state (if (= prism_result "0")
 					(do
 						(when-not (nil? loaninfo)
 							(db/updateDataStatus {:loan_id loan-id}))
@@ -223,13 +229,13 @@
 		  (do
 			  (db/new-credit-request {:request-id request-id :subscriber subscriber
 									  :loan-type  (name loan-type) :amount principal})
-			  (pg-credit-sub request-id subscriber loan-type principal)
+			  ;(pg-credit-sub request-id subscriber loan-type principal)
 			  ;;testing result
-			  ; {:status                 :ok :subscriber subscriber :loan-type loan-type
-			  ;:amount                 principal :error-status "sucess"
-			  ; :external-response-code "0" :external-txn-id "2020073001025250501008993"
-			  ; :request-id             request-id
-			  ; :post-event-balance     0}
+			   {:status :ok :subscriber subscriber :loan-type loan-type
+			  :amount principal :error-status "sucess"
+			   :external-response-code "0" :external-txn-id "2020073001025250501008993"
+			   :request-id request-id
+			   :post-event-balance 0}
 			  )]
 		(db/updateVtopReqStatus {:request-id request-id :status (status-value status) :error error-status
 								 :time_processed  time-processed :external-response-code external-response-code

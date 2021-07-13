@@ -16,7 +16,7 @@
 	(:import (java.net URLDecoder)))
 
 
-(declare proceed-handle-ussd-request do-handler get-start-state get-serviceq proceedLend
+(declare proceed-handle-ussd-request do-handler get-start-state proceedLend
 				 lend new-loan-request)
 
 (defmacro with-request-params [parameters & body]
@@ -163,17 +163,17 @@
 																		 _ (reset! session-data new-pre-session)]
 																	   (log/infof "new state [%s,%s]" state @session-data)
 																	   (db/updateSession {:session-id session-id :subscriber subscriber :state state :session-data (str pre-session)}))
-			(some #{state} [:lend-airtime :lend-data]) (let [{:keys [request-id loan-type max-loanable amount-requested amount-net serviceq menu-3p]} @session-data
+			(some #{state} [:lend-airtime :lend-data]) (let [{:keys [request-id loan-type max-loanable amount-requested amount-net serviceq menu-3p advance-name bundle-size]} @session-data
 															 _ (log/debugf "processing for loan => %s" @session-data) msisdn-3p (when menu-3p (utils/submsisdn input))
 															 _ (reset! session-data (assoc @session-data :msisdn-3p msisdn-3p :type state :outstanding (int (/ (- max-loanable (+ amount-net serviceq)) (env :denom-factor)))))]
 														   (with-request-params [subscriber session-id request-id amount-requested serviceq max-loanable]
-															   (let [{:keys [advance_name]} (db/get-loan-period (verify-loan-type state) amount-requested)]
-																   (when-not (proceedLend {:loan-type        (verify-loan-type state)
-																						   :subscriber       subscriber :service-class service-class :session-id session-id :direct? is-new?
-																						   :advance-name     advance_name :request-id request-id
-																						   :amount-requested amount-requested :serviceq serviceq :max-loanable max-loanable
-																						   :channel          :ussd :short-code service-code :misc-args {:profile profile-id} :loan_count loan-count})
-																	   (reset! session-data (session-data-update @session-data :state (verify-loan-failure state)))))))
+															   (when-not (proceedLend {:loan-type        (verify-loan-type state)
+																					   :subscriber       subscriber :service-class service-class :session-id session-id :direct? is-new?
+																					   :advance-name     advance-name :request-id request-id
+																					   :amount-requested amount-requested :serviceq serviceq :max-loanable max-loanable
+																					   :bundle-size		bundle-size
+																					   :channel          :ussd :short-code service-code :misc-args {:profile profile-id} :loan_count loan-count})
+																   (reset! session-data (session-data-update @session-data :state (verify-loan-failure state))))))
 			:trigger-rec (with-request-params [subscriber] (rmqutils/trigger-recovery {:sub     subscriber
 																					   :amount 	loan-balance               ;(/ loan-balance (env :denom-factor))
 																					   :time 	(f/unparse
@@ -211,7 +211,7 @@
 ;(navigate-menu subscriber session-id session-data input)
 
 
-(defn proceedLend [{:keys [subscriber request-id loan-type amount-requested] :as args}]
+(defn proceedLend [{:keys [subscriber request-id loan-type amount-requested bundle-size] :as args}]
 	(try
 		(let [now (t/now)
 					{:keys [date_part charging_method] :as loan_period} (db/get-loan-period loan-type amount-requested)
@@ -226,17 +226,17 @@
 
 (defn- lend [{:keys [request-id subscriber service-class loan-type
 					 amount-requested serviceq max-loanable channel
-					 loan_count charging_method] :as args}]
+					 loan_count charging_method bundle-size] :as args}]
 	(do
 		(utils/increment-counter *countof-loan-requests* amount-requested)
 		(let [_ (log/debugf "lending details %s"args)
-					repay     (db/get-gross-amount loan-type amount-requested charging_method)
+					repay     (if (= charging_method :post) bundle-size amount-requested)
 					principal (db/get-net-amount loan-type amount-requested charging_method)
 					newargs (conj {} args {:to-repay repay :principal principal
 										   :id request-id :name name
 										   :original-sc service-class
 										   :typ loan-type})]
-			(new-loan-request request-id subscriber loan-type channel amount-requested serviceq max-loanable (inc loan_count) charging_method)
+			(new-loan-request request-id subscriber loan-type channel repay serviceq max-loanable (inc loan_count) charging_method)
 			(log/infof "processingForVTU %s"newargs)
 			(vtu/process-lend newargs))))
 
@@ -268,11 +268,4 @@
 			 menulist)
 		 @new-session-data]))
 
-(defn- get-serviceq [loan-type amount subscriber]
-	(when amount (try
-								 (let [fee (db/get-fee-amount (keyword loan-type) amount)
-											 _ (log/debugf "Service fee %s|%s|%s"fee amount subscriber )]
-									 fee)
-								 (catch Exception e
-									 (log/errorf "cannotGetServiceFee %s|%s -> %s"amount subscriber e)
-									 false))))
+

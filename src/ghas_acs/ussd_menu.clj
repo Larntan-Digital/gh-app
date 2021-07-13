@@ -99,11 +99,15 @@
 						 ~'get-net   (fn [loan-type# amount# charging-method#] (db/get-net-amount loan-type# amount# charging-method#))
 						 ~'gross     ~'get-gross
 						 ~'net       ~'get-net
-						 ~'fee       (fn [loan-type# amount#] (db/get-fee-amount loan-type# amount#))
+						 ~'fee       (fn ([loan-type# amount#]
+										  (db/get-fee-amount loan-type# amount# nil))
+										 ([loan-type# amount# gross#]
+										 (db/get-fee-amount loan-type# amount# gross#)))
 						 ;; ---
-						 {:keys [~'subscriber ~'state ~'language ~'subscriber-flags ~'account-status ~'age-on-network
-										 ~'queue-count ~'queue-total ~'loan-balance ~'ma-balance ~'max-loanable ~'max-qualified
-										 ~'amount-requested ~'amount-gross ~'amount-net ~'serviceq ~'ussd-string ~'outstanding ~'loan-type]}
+				   {:keys [~'subscriber ~'state ~'language ~'subscriber-flags ~'account-status ~'age-on-network
+						   ~'queue-count ~'queue-total ~'loan-balance ~'ma-balance ~'max-loanable ~'max-qualified
+						   ~'amount-requested ~'amount-gross ~'amount-net ~'serviceq ~'ussd-string ~'outstanding ~'loan-type ~'advance-name
+						   ]}
 						 @~session-data-var]
 				 (let [current-state# (~'session :state)]
 					 (condp = current-state#
@@ -232,7 +236,7 @@ State text definition:
 						 ~'get-net   (fn [loan-type# amount# charging-method#] (db/get-net-amount loan-type# amount# charging-method#))
 						 ~'gross     ~'get-gross
 						 ~'net       ~'get-net
-						 ~'fee       (fn [loan-type# amount#] (db/get-fee-amount loan-type# amount#))
+						 ~'fee       (fn [loan-type# amount# gross#] (db/get-fee-amount loan-type# amount# gross#))
 						 ;; ---
 						 {:keys [~'subscriber ~'state ~'language ~'subscriber-flags ~'account-status ~'age-on-network
 										 ~'queue-count ~'queue-total ~'loan-balance ~'max-qualified ~'max-loanable
@@ -272,12 +276,12 @@ State text definition:
 						 ~'get-net   (fn [loan-type# amount# charging-method#] (db/get-net-amount loan-type# amount# charging-method#))
 						 ~'gross     ~'get-gross
 						 ~'net       ~'get-net
-						 ~'fee       (fn [loan-type# amount#] (db/get-fee-amount loan-type# amount#))
+						 ~'fee       (fn [loan-type# amount# gross#] (db/get-fee-amount loan-type# amount# gross#))
 						 ;; ---
 						 {:keys [~'subscriber ~'state ~'language ~'subscriber-flags ~'account-status ~'age-on-network
 										 ~'queue-count ~'queue-total ~'loan-balance ~'ma-balance ~'max-loanable ~'max-qualified
 										 ~'amount-requested ~'amount-gross ~'amount-net ~'serviceq ~'ussd-string
-										 ~'outstanding ~'menu-3p ~'type ~'loan-type]}
+										 ~'outstanding ~'menu-3p ~'type ~'loan-type ~'advance-name ]}
 						 @~session-data-var
 						 ;; ---
 						 ~'check-menu? (fn [] (if ~'menu-3p true false))

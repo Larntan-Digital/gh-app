@@ -1,7 +1,7 @@
 {
  ; set your dev database connection URL here
  :secrets #include "/Users/yimika/Documents/IdeaProjects/ghas-acs/secrets.edn"
- :database-url #join ["postgresql://127.0.0.1:5432/ghacs_db?user=yimika&password="
+ :database-url #join ["postgresql://127.0.0.1:9920/ghacs_db?user=yimika&password="
 											#ref [:secrets :super-admin-password]]
  :database-pool {:connection-timeout 5000
 				 :max-lifetime 180000
@@ -86,7 +86,9 @@
 	  :msg-lending-from-paymentgateway		"Your account has been topped up via Borrow Me Credit."
 	  :recon-lending-interval				0
 
-	  :profit-guru							"http://10.161.139.5:18081/PrismWS/HSI/subscriptions"
+
+	  :profit-guru							"http://10.161.77.88/REWARD?msisdn=%s&campaign_name=BorrowMeData&reward_id=%s"
+	  ;"http://10.161.139.5:18081/PrismWS/HSI/subscriptions"
 
 	  :bundle-values	(condp = ghas-acs.vtu/bundleid
 							5000	10045

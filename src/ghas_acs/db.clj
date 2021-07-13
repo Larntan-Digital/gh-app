@@ -14,7 +14,7 @@
 (defstate ^:dynamic *db*
 					:start (if-let [jdbc-url (env :database-url)]
 									 (conman/connect! (conj {:jdbc-url jdbc-url :driver-class-name "org.postgresql.Driver"}
-																					(env :database-pool)))
+														  (env :database-pool)))
 
 									 (do
 										 (log/warn "database connection URL was not found, please set :database-url in your config, e.g: dev-config.edn")
@@ -50,8 +50,8 @@
 
 	(reset! loan-periods (get-loan-periods)))
 
-
-(defn getService [sq [loan_type amount]]
+(defn getService [sq [loan_type amount gross]]
+	(log/infof "getService=%s|%s"sq [loan_type amount gross])
 	(loop [v (first sq)
 		   vx (next sq)]
 		(if (nil? v)
@@ -66,19 +66,22 @@
 						(= loan_amt amount))
 					(cond (and serviceq serviceq-amt) nil
 						serviceq-amt serviceq-amt
-						serviceq  (* amount (/ serviceq 100)))
+						serviceq  (cond (nil? gross) (* amount (/ serviceq 100))
+									  (= loan_type :airtime) (* amount (/ serviceq 100))
+									  :else (- gross amount)))
 					(recur (first vx) (next vx)))))))
 
 
 (defn getLoanPeriod [ld [loan_type amount]]
 	(loop [v (first ld)
-				 vx (next ld)]
+		   vx (next ld)]
 		(if (nil? v)
 			(throw (ex-info "No matching loan period"
-											{:error-class :no-matching-loan-period :amount amount :loan_type loan_type}))
+											{:error-class :no-matching-loan-period
+											 :amount amount :loan_type loan_type}))
 			(let [loan_typ (:loan_type v)
-						loan_amt (:loanable_amount v)
-						date_part (:date_part v)]
+				  loan_amt (:loanable_amount v)
+				  date_part (:date_part v)]
 				(if (and (= (keyword loan_typ) loan_type)
 								 (= loan_amt amount))
 					v
@@ -93,8 +96,8 @@
 		:pre (if-let [serviceq (getService @service-charge-rates [loan-type requested-amount])]
 						(- requested-amount serviceq)
 						(throw (Exception. (format "Unknown loan amount %s"
-																			 {:error-class :unknown-loan-amount
-																				:loan-type loan-type :amount requested-amount}))))
+											   {:error-class :unknown-loan-amount
+												:loan-type loan-type :amount requested-amount}))))
 		:post requested-amount))
 
 
@@ -111,8 +114,8 @@
 
 
 (defn get-fee-amount
-	([loan-type requested-amount]
-	 (if-let [serviceq (getService @service-charge-rates [(keyword loan-type) requested-amount])]
+	([loan-type requested-amount gross]
+	 (if-let [serviceq (getService @service-charge-rates [(keyword loan-type) requested-amount gross])]
 		 serviceq
 		 (throw (ex-info "Unknown fee amount."
 										 {:error-class :unknown-loan-amount
@@ -120,11 +123,11 @@
 
 
 (defn get-loan-period [loan-type requested-amount]
-	(if-let [ld 	(getLoanPeriod @loan-periods [(keyword loan-type) requested-amount])]
+	(if-let [ld (getLoanPeriod @loan-periods [(keyword loan-type) requested-amount])]
 		ld
 		(throw (ex-info "Unknown loan period."
-										{:error-class :unknown-loan-period
-										 :loan-type (keyword loan-type)  :amount requested-amount}))))
+				   {:error-class :unknown-loan-period
+					:loan-type (keyword loan-type)  :amount requested-amount}))))
 
 (defn get-subscriber-info [values]
 	(reduce conj {} (proc-get-subscriber-info values)))

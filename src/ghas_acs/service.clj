@@ -37,10 +37,10 @@
 	 {:status  200
 		:headers {"Content-Type" "text/plain"}
 		:body    (json/write-str {:message message
-															:action  (condp = action
-																				 :terminate "S"
-																				 :continue "C"
-																				 "S")})}))
+								  :action  (condp = action
+											   :terminate "S"
+											   :continue "C"
+											   "S")})}))
 
 (def ^:dynamic *language* :en)
 

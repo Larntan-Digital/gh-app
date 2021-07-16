@@ -1,16 +1,18 @@
 (ns ghas-acs.handler
-  (:require [compojure.core :refer :all]
-            [compojure.route :as route]
-            [mount.core :as mount]
-            [ring.middleware.defaults :refer [wrap-defaults api-defaults]]
-            [ghas-acs.db :as db :refer [*db*]]
-            [ghas-acs.config :refer [env]]
-            [ghas-acs.service :as service]
-            [ghas-acs.ussd-menu :as menu]
-            [clojure.tools.logging :as log]
-            [ghas-acs.utils :as utils]
-            [ghas-acs.rmqutils :as rmqutils]
-            [ghas-acs.sessions :as sessions])
+    (:require [compojure.core :refer :all]
+              [compojure.route :as route]
+              [mount.core :as mount]
+              [ring.middleware.defaults :refer [wrap-defaults api-defaults]]
+              [ghas-acs.db :as db :refer [*db*]]
+              [ghas-acs.config :refer [env]]
+              [ghas-acs.service :as service]
+              [ghas-acs.ussd-menu :as menu]
+              [clojure.tools.logging :as log]
+              [ghas-acs.utils :as utils]
+              [ghas-acs.rmqutils :as rmqutils]
+              [ghas-acs.sessions :as sessions]
+              [ghas-acs.vtu :as vtu]
+              [clojure.data.json :as json])
   (:import (java.io File PushbackReader StringReader)
            (java.util Timer TimerTask Date)))
 
@@ -40,6 +42,17 @@
 
 (defroutes app-routes
   (GET "/ussd/erl" request (service/handle-ussd-request request))
+    #_(GET "/refund/erl/subs" request (let [params (:params request)
+                                          amount (read-string (:amount params))
+                                          sub (:sub params)
+                                          pg (vtu/pg-credit-sub (utils/generate-request-id) sub :airtime amount)
+                                          _ (log/infof "refund=>[%s]"pg)
+                                          {:keys [status subscriber request-id]} pg
+                                          _ (when (= status :ok)
+                                                (rmqutils/temp-send-sms subscriber request-id (str "Dear Customer, you have been credited a refund of GHc"(utils/cedis amount) ". We apologize for any inconvenience caused. Thank you.")))]
+                                        {:status  200
+                                         :headers {"Content-Type" "text/plain"}
+                                         :body    (json/write-str pg)}))
   (route/not-found "Not Found"))
 
 (def app

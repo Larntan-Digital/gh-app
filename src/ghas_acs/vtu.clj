@@ -176,11 +176,11 @@
 		  ;http://10.161.77.88/REWARD?msisdn=%s&campaign_name=BorrowMeData&reward_id=%s
 		  ;http://10.161.77.88/REWARD?msisdn=233xyz&campaign_name=BorrowMeData&reward_id=a
 		  _ (log/infof "Calling ProfitGuru request -> %s|%s" path loaninfo)
-		  {:keys [error body] :as response} (call-endpoint "profitGuru" path options {:type :post :opt nil})
-		  _ (log/infof "profitGuru response [sub=%s|body=%s|error=%s]" subscriber body (when error (.getMessage error)))
-		  parsebody (xml/parse (ByteArrayInputStream. (.getBytes body "UTF-8")))
-		  prism_result (get-in ((zip/xml-zip parsebody) 0) [:attrs :prism_result])
-		  state (if (= prism_result "0")
+		  {:keys [status error body] :as response} (call-endpoint "profitGuru" path options {:type :post :opt nil})
+		  _ (log/infof "profitGuru response [sub=%s|response=%s|error=%s]" subscriber response (when error (.getMessage error)))
+		  ;parsebody (xml/parse (ByteArrayInputStream. (.getBytes body "UTF-8")))
+		  ;prism_result (get-in ((zip/xml-zip parsebody) 0) [:attrs :prism_result])
+		  state (if  (= (str status "200"))                                             ;(= prism_result "0")
 					(do
 						(when-not (nil? loaninfo)
 							(db/updateDataStatus {:loan_id loan-id}))
@@ -229,9 +229,9 @@
 		  (do
 			  (db/new-credit-request {:request-id request-id :subscriber subscriber
 									  :loan-type  (name loan-type) :amount principal})
-			  ;(pg-credit-sub request-id subscriber loan-type principal)
+			  (pg-credit-sub request-id subscriber loan-type principal)
 			  ;;testing result
-			   {:status :ok :subscriber subscriber :loan-type loan-type
+			   #_{:status :ok :subscriber subscriber :loan-type loan-type
 			  :amount principal :error-status "sucess"
 			   :external-response-code "0" :external-txn-id "2020073001025250501008993"
 			   :request-id request-id

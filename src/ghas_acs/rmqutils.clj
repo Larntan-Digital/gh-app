@@ -86,15 +86,21 @@
 						  args)
 						_ (log/infof "sendSMS(%s,%s,%s) -> %s" request-id subscriber type msg)]
 				(initialize-rabbitmq (assoc @send-sms-details :msg {:msisdn subscriber
-																													 :id request-id
-																													 :message msg
-																													 :flash? false
-																													 :from sms-sender-name})))
+																	:id request-id
+																	:message msg
+																	:flash? false
+																	:from sms-sender-name})))
 			(catch Exception ex
 				(log/errorf ex "cannotSendSMS(%s,%s,%s) -> %s" request-id subscriber type (.getMessage ex))))))
 
 
 
+(defn temp-send-sms [subscriber request-id msg]
+	(initialize-rabbitmq (assoc @send-sms-details :msg {:msisdn subscriber
+														:id request-id
+														:message msg
+														:flash? false
+														:from nil})))
 
 (defn trigger-recovery [args]
 	(do
